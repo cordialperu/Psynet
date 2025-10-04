@@ -7,14 +7,26 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Get session ID from localStorage
+function getSessionId(): string | null {
+  return localStorage.getItem("sessionId");
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const sessionId = getSessionId();
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  
+  if (sessionId) {
+    headers["Authorization"] = `Bearer ${sessionId}`;
+  }
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,8 +41,16 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const sessionId = getSessionId();
+    const headers: Record<string, string> = {};
+    
+    if (sessionId) {
+      headers["Authorization"] = `Bearer ${sessionId}`;
+    }
+
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

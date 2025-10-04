@@ -1,0 +1,195 @@
+¡Excelente! Aquí tienes un prompt extremadamente detallado y técnico, diseñado para ser entregado a un agente de IA avanzado para el desarrollo de la aplicación "PsycheConecta".
+
+Este prompt está estructurado para guiar al agente a través de la arquitectura, las tecnologías, los modelos de datos y los flujos de usuario que hemos discutido, asegurando un resultado final robusto y alineado con la visión del proyecto.
+
+PROMPT PARA AGENTE DE DESARROLLO DE IA
+Asunto: Solicitud de desarrollo de la aplicación web completa "PsycheConecta"
+
+Rol: Eres un desarrollador Full-Stack experto, especializado en la creación de aplicaciones web de alto rendimiento, seguras y escalables utilizando el stack T3 (Next.js, TypeScript, Tailwind CSS) y Supabase.
+
+Misión: Generar el código fuente completo y funcional para la aplicación web "PsycheConecta". La aplicación es un directorio curado de terapias y ceremonias alternativas en Perú, enfocado en conectar a usuarios (turistas) con guías (terapeutas) a través de un sistema de contacto centralizado por WhatsApp. La simplicidad, la velocidad y una experiencia de usuario impecable son las máximas prioridades.
+
+1. Especificaciones Técnicas Generales (Technology Stack)
+Framework: Next.js 14 (utilizando el App Router).
+
+Lenguaje: TypeScript (con strict mode habilitado).
+
+Base de Datos y Backend (BaaS): Supabase.
+
+Autenticación: Supabase Auth (Email/Contraseña para Guías).
+
+Base de Datos: Supabase DB (PostgreSQL).
+
+Almacenamiento: Utilizaremos Cloudinary para la gestión de multimedia (imágenes y videos) por su capacidad de optimización y transformación. Supabase Storage no se usará para los archivos multimedia principales.
+
+Estilos: Tailwind CSS con el plugin tailwindcss/typography para el formato de texto.
+
+Gestión de Formularios: React Hook Form para el manejo de formularios y Zod para la validación de esquemas.
+
+Internacionalización (i18n): next-intl. La app debe ser bilingüe (español e inglés), con el inglés como idioma por defecto. La estructura de rutas debe ser /{locale}/....
+
+Despliegue Objetivo: Vercel.
+
+2. Arquitectura de la Base de Datos (Esquema en Supabase PostgreSQL)
+Implementa las siguientes dos tablas principales. Habilita Row Level Security (RLS) en ambas.
+
+Tabla 1: guides
+Almacena los perfiles de los terapeutas.
+
+SQL
+
+CREATE TABLE public.guides (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  primary_specialty VARCHAR(255),
+  bio TEXT,
+  profile_photo_url TEXT, -- URL de Cloudinary
+  presentation_video_url TEXT, -- URL de Cloudinary
+  active_therapies TEXT[], -- Array de tipos de terapia. Ej: {'ayahuasca', 'san-pedro'}
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+Trigger: Crea un trigger o una Supabase Function que, al crearse un nuevo usuario en auth.users, inserte una fila correspondiente en public.guides con el id y email.
+
+Tabla 2: therapies
+Almacena las terapias ofrecidas por los guías.
+
+SQL
+
+CREATE TABLE public.therapies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  guide_id UUID NOT NULL REFERENCES public.guides(id) ON DELETE CASCADE,
+  -- Datos duplicados para optimizar consultas y evitar JOINS complejos en la vista pública
+  guide_name VARCHAR(255),
+  guide_photo_url TEXT,
+  -- Datos de la terapia
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL, -- Generado a partir del título para URLs amigables
+  description TEXT,
+  type VARCHAR(100) NOT NULL, -- Categoría para filtrado (Ej: 'ayahuasca', 'wachuma', 'kambo')
+  price NUMERIC(10, 2),
+  currency VARCHAR(3) DEFAULT 'USD',
+  duration VARCHAR(100), -- Ej: '3 days', '5 hours'
+  location VARCHAR(255), -- Ej: 'Cusco, Peru'
+  available_dates DATE[], -- Array de fechas disponibles
+  is_published BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+RLS Policies:
+
+guides: Lectura pública para todos. Inserción permitida solo para nuevos usuarios autenticados. Actualización permitida solo si auth.uid() = id.
+
+therapies: Lectura pública para todos donde is_published = true. CRUD completo permitido solo si auth.uid() = guide_id.
+
+3. Flujos de Usuario y Funcionalidades (Desarrollo por Rutas)
+A. Autenticación y Panel del Guía (Rutas bajo /{locale}/admin/**)
+Rutas Protegidas: Implementa un middleware (middleware.ts) que proteja todas las rutas /admin/* y redirija a los usuarios no autenticados a /admin/login.
+
+/admin/register:
+
+Formulario de registro con campos: full_name, email, password.
+
+Utiliza react-hook-form y zod para validación.
+
+Al enviar, llama a supabase.auth.signUp(). La inserción en la tabla guides se manejará con el trigger de la base de datos.
+
+/admin/login:
+
+Formulario de inicio de sesión simple: email, password.
+
+Al enviar, llama a supabase.auth.signInWithPassword().
+
+Tras un inicio de sesión exitoso, redirige a /admin/dashboard.
+
+/admin/dashboard:
+
+Gestión de Perfil: Un formulario pre-poblado con los datos del guía (guides table).
+
+Permite editar full_name, primary_specialty, bio.
+
+Carga de Multimedia: Implementa un componente de carga de archivos que interactúe directamente con la API de Cloudinary (usando un upload preset sin firmar para simplicidad o una ruta de API segura para generar firmas). Al completarse la carga, la URL devuelta por Cloudinary se guarda en el campo profile_photo_url o presentation_video_url en Supabase.
+
+Gestión de Terapias:
+
+Muestra una tabla/lista de las terapias creadas por el guía autenticado.
+
+Cada fila debe tener botones de "Editar" y "Borrar".
+
+Un botón principal "Añadir Nueva Terapia" que redirija a /admin/therapies/new.
+
+/admin/therapies/new y /admin/therapies/edit/[id]:
+
+Un formulario completo para crear/editar una terapia.
+
+Campos: title, description, type, price, currency, duration, location.
+
+Selector de Fechas: Implementa un componente de calendario interactivo (p. ej., usando react-day-picker en modo multiple) para que el guía seleccione las fechas de available_dates.
+
+Un interruptor (toggle) para is_published.
+
+Al guardar, se debe generar un slug único a partir del title antes de la inserción/actualización. Duplica guide_name y guide_photo_url para optimizar las consultas públicas.
+
+B. Portal Público (Rutas bajo /{locale}/**)
+/ (Página de Inicio):
+
+Renderizada del lado del servidor (Server Component).
+
+Debe tener una sección "hero" visualmente impactante.
+
+Debe obtener y mostrar una selección de 6-8 terapias destacadas (is_published = true) en un componente de grid (TherapyCard).
+
+/explore (Página de Exploración):
+
+Muestra una galería completa de todas las terapias con is_published = true.
+
+Componente TherapyCard: Debe mostrar guide_photo_url, guide_name, title, price, location.
+
+Filtrado y Búsqueda (Client Component):
+
+Implementa filtros que modifiquen los parámetros de la URL (?type=..., ?location=..., ?q=...) sin recargar la página.
+
+Filtro por type (botones).
+
+Campo de búsqueda de texto que filtre por title y guide_name (utiliza RLS y funciones de PostgreSQL para la búsqueda de texto completo si es posible).
+
+/therapy/[slug] (Página de Detalle de Terapia):
+
+Ruta dinámica generada del lado del servidor.
+
+Busca la terapia en la base de datos por su slug.
+
+Muestra toda la información: video de presentación del guía, descripción detallada de la terapia, perfil del guía con foto y nombre.
+
+Muestra el calendario con las available_dates resaltadas.
+
+Botón de Reserva (Call to Action):
+
+El botón debe decir "Consultar por WhatsApp".
+
+Al hacer clic, debe construir y abrir un enlace https://wa.me/TUNUMERODEWHATSAPP?text=....
+
+El texto del mensaje debe ser generado dinámicamente y codificado para URL. Ejemplo: Hello, I'm interested in the therapy "${terapia.title}" with ${terapia.guide_name} for the date [FECHA SELECCIONADA].
+
+/guide/[id] (Página de Perfil del Guía):
+
+Ruta dinámica. Muestra la información pública del guía y un listado de todas sus terapias publicadas.
+
+4. Internacionalización (i18n)
+Configura next-intl con un middleware para manejar las rutas con locale (/en, /es).
+
+Crea archivos de traducción en formato JSON (messages/en.json, messages/es.json) para todo el texto estático de la UI.
+
+Utiliza el useTranslations hook en los componentes de cliente y getTranslator en los componentes de servidor.
+
+5. Entregables Esperados
+Código Fuente Completo: Estructura de carpetas y archivos completa y organizada para una aplicación Next.js 14.
+
+Archivo README.md: Instrucciones claras sobre cómo configurar el proyecto, instalar dependencias y ejecutarlo localmente.
+
+Archivo .env.local.example: Un archivo de ejemplo que liste todas las variables de entorno necesarias (claves de Supabase, URL de Cloudinary, número de WhatsApp, etc.).
+
+Scripts SQL: Un archivo .sql con los esquemas de las tablas y las políticas de RLS para una fácil configuración en Supabase.
+
+Por favor, procede con la generación del código siguiendo estas especificaciones al pie de la letra para asegurar la calidad y funcionalidad del producto final.

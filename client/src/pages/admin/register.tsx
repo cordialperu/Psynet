@@ -11,13 +11,21 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 const registerSchema = z.object({
-  fullName: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+  email: z.string().email("Invalid email"),
+  whatsapp: z.string()
+    .min(9, "WhatsApp must be at least 9 digits")
+    .regex(/^[+]?[\d\s-()]+$/, "Invalid WhatsApp format"),
+  instagram: z.string().optional(),
+  tiktok: z.string().optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
+}).refine((data) => data.instagram || data.tiktok, {
+  message: "You must provide at least Instagram or TikTok",
+  path: ["instagram"],
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -31,6 +39,9 @@ export default function AdminRegister() {
     defaultValues: {
       fullName: "",
       email: "",
+      whatsapp: "",
+      instagram: "",
+      tiktok: "",
       password: "",
       confirmPassword: "",
     },
@@ -58,28 +69,30 @@ export default function AdminRegister() {
   });
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="font-serif text-3xl">Register as a Guide</CardTitle>
-          <CardDescription>
-            Create an account to list your healing practices
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 transition-colors duration-300 px-4">
+      <Card className="w-full max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl transition-colors duration-300">
+        <CardHeader className="text-center space-y-2 pt-8 pb-6">
+          <div className="text-5xl mb-2">🌿</div>
+          <CardTitle className="font-serif text-3xl md:text-4xl text-gray-900 dark:text-white transition-colors duration-300">Guide Register</CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 transition-colors duration-300">
+            Create an account to publish your ceremonies, therapies, products and events
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-8">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-6">
+            <form onSubmit={form.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-5">
               <FormField
                 control={form.control}
                 name="fullName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Full Name</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="John Doe" 
                         {...field} 
                         data-testid="input-full-name"
+                        className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>
                     <FormMessage />
@@ -92,13 +105,14 @@ export default function AdminRegister() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Email *</FormLabel>
                     <FormControl>
                       <Input 
                         type="email" 
                         placeholder="your@email.com" 
                         {...field} 
                         data-testid="input-email"
+                        className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>
                     <FormMessage />
@@ -108,16 +122,79 @@ export default function AdminRegister() {
 
               <FormField
                 control={form.control}
+                name="whatsapp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">WhatsApp *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="tel" 
+                        placeholder="+51 987 654 321" 
+                        {...field} 
+                        data-testid="input-whatsapp"
+                        className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-gray-900 dark:text-white transition-colors duration-300">Social Media * (at least one required)</p>
+                
+                <FormField
+                  control={form.control}
+                  name="instagram"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Instagram</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="@yourusername" 
+                          {...field} 
+                          data-testid="input-instagram"
+                          className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tiktok"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">TikTok</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="@yourusername" 
+                          {...field} 
+                          data-testid="input-tiktok"
+                          className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Password *</FormLabel>
                     <FormControl>
                       <Input 
                         type="password" 
                         placeholder="••••••••" 
                         {...field} 
                         data-testid="input-password"
+                        className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>
                     <FormMessage />
@@ -130,13 +207,14 @@ export default function AdminRegister() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Confirm Password *</FormLabel>
                     <FormControl>
                       <Input 
                         type="password" 
                         placeholder="••••••••" 
                         {...field} 
                         data-testid="input-confirm-password"
+                        className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>
                     <FormMessage />
@@ -146,7 +224,7 @@ export default function AdminRegister() {
 
               <Button 
                 type="submit" 
-                className="w-full" 
+                className="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-xl py-6 text-base font-medium transition-colors duration-300" 
                 disabled={registerMutation.isPending}
                 data-testid="button-register"
               >
@@ -156,14 +234,18 @@ export default function AdminRegister() {
           </Form>
 
           <div className="mt-6 text-center text-sm">
-            <p className="text-muted-foreground">
+            <p className="text-gray-600 dark:text-gray-400 transition-colors duration-300">
               Already have an account?{" "}
-              <Link href="/admin/login">
-                <a className="text-primary hover:underline font-medium" data-testid="link-login">
-                  Sign in here
-                </a>
+              <Link href="/admin/login" className="text-gray-900 dark:text-white hover:underline font-medium transition-colors duration-300" data-testid="link-login">
+                Sign in here
               </Link>
             </p>
+          </div>
+          
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
+            <Link href="/" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300">
+              ← Back to home
+            </Link>
           </div>
         </CardContent>
       </Card>

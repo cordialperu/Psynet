@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -5,6 +6,20 @@ import { setupVite, serveStatic, log } from "./vite";
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Add timeout to all requests
+app.use((req, res, next) => {
+  req.setTimeout(15000); // 15 second timeout
+  res.setTimeout(15000);
+  next();
+});
+
+// Add keep-alive headers
+app.use((req, res, next) => {
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Keep-Alive', 'timeout=5, max=100');
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -61,11 +76,8 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  server.listen(port, '0.0.0.0', () => {
     log(`serving on port ${port}`);
+    log(`📱 Access from iPhone: http://192.168.1.49:${port}`);
   });
 })();

@@ -49,12 +49,12 @@ export default function Explore() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-950">
       <Navbar />
       
       <div className="flex-1">
         {/* Filter Bar */}
-        <div className="sticky top-16 z-40 bg-background/95 backdrop-blur border-b">
+        <div className="sticky top-16 z-40 bg-gray-900/95 backdrop-blur border-b border-gray-800">
           <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6">
             {/* Search */}
             <div className="relative mb-6">
@@ -62,7 +62,7 @@ export default function Explore() {
               <Input
                 type="search"
                 placeholder="Search therapies, guides, or locations..."
-                className="pl-10"
+                className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 data-testid="input-search"
@@ -72,8 +72,8 @@ export default function Explore() {
             {/* Type Filters */}
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Filter by type:</span>
+                <Filter className="w-4 h-4 text-gray-400" />
+                <span className="text-sm font-medium text-gray-200">Filter by type:</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {therapyTypes.map((type) => (
@@ -105,8 +105,8 @@ export default function Explore() {
         {/* Results */}
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-12">
           <div className="mb-6">
-            <p className="text-muted-foreground" data-testid="text-results-count">
-              Showing {filteredTherapies.length} {filteredTherapies.length === 1 ? 'therapy' : 'therapies'}
+            <p className="text-gray-400" data-testid="text-results-count">
+              Showing {filteredTherapies.length} {filteredTherapies.length === 1 ? 'listing' : 'listings'}
             </p>
           </div>
 

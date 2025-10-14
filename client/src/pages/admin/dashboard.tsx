@@ -15,7 +15,7 @@ import { GuideProfileForm } from "@/components/admin/guide-profile-form";
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [activeSection, setActiveSection] = useState<"profile" | "therapies">("profile");
+  const [activeSection, setActiveSection] = useState<"profile" | "therapies">("therapies");
 
   const { data: guide, isLoading: guideLoading } = useQuery<Guide>({
     queryKey: ["/api/auth/me"],
@@ -44,8 +44,8 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/therapies/my-therapies"] });
       toast({
-        title: "Therapy deleted",
-        description: "The therapy has been removed successfully.",
+        title: "Listing deleted",
+        description: "The listing has been removed successfully.",
       });
     },
     onError: (error: Error) => {
@@ -70,10 +70,10 @@ export default function AdminDashboard() {
 
   if (guideLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 transition-colors duration-300">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 dark:border-white mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400 transition-colors duration-300">Loading...</p>
         </div>
       </div>
     );
@@ -86,12 +86,12 @@ export default function AdminDashboard() {
 
   return (
     <SidebarProvider style={style as React.CSSProperties}>
-      <div className="flex h-screen w-full">
-        <Sidebar>
+      <div className="flex h-screen w-full bg-white dark:bg-gray-900 transition-colors duration-300">
+        <Sidebar className="border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 transition-colors duration-300">
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel className="font-serif text-xl">
-                PsycheConecta
+              <SidebarGroupLabel className="font-serif text-xl text-gray-900 dark:text-white transition-colors duration-300">
+                🌿 PsycheConecta
               </SidebarGroupLabel>
               <SidebarGroupContent className="mt-6">
                 <SidebarMenu>
@@ -102,7 +102,7 @@ export default function AdminDashboard() {
                       data-testid="nav-profile"
                     >
                       <User className="w-4 h-4" />
-                      <span>Profile</span>
+                      <span>My Profile</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
@@ -112,7 +112,7 @@ export default function AdminDashboard() {
                       data-testid="nav-therapies"
                     >
                       <FileText className="w-4 h-4" />
-                      <span>Therapies</span>
+                      <span>My Listings</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
@@ -122,7 +122,7 @@ export default function AdminDashboard() {
             <div className="mt-auto p-4">
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-300"
                 onClick={() => logoutMutation.mutate()}
                 data-testid="button-logout"
               >
@@ -133,13 +133,13 @@ export default function AdminDashboard() {
           </SidebarContent>
         </Sidebar>
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto bg-white dark:bg-gray-900 transition-colors duration-300">
           <div className="p-8">
             {activeSection === "profile" && (
               <div>
                 <div className="mb-8">
-                  <h1 className="font-serif text-4xl font-bold mb-2">Your Profile</h1>
-                  <p className="text-muted-foreground">
+                  <h1 className="font-serif text-4xl font-bold mb-2 text-gray-900 dark:text-white transition-colors duration-300">Your Profile</h1>
+                  <p className="text-gray-600 dark:text-gray-400 transition-colors duration-300">
                     Manage your guide profile and upload media
                   </p>
                 </div>
@@ -149,64 +149,59 @@ export default function AdminDashboard() {
 
             {activeSection === "therapies" && (
               <div>
-                <div className="mb-8 flex items-center justify-between">
+                <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h1 className="font-serif text-4xl font-bold mb-2">Your Therapies</h1>
-                    <p className="text-muted-foreground">
-                      Manage your therapy offerings
-                    </p>
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-300">My Listings</h2>
+                    <p className="text-gray-600 dark:text-gray-400 transition-colors duration-300">Manage your published offerings</p>
                   </div>
                   <Link href="/admin/therapies/new">
-                    <a>
-                      <Button data-testid="button-add-therapy">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add New Therapy
-                      </Button>
-                    </a>
+                    <Button data-testid="button-new-therapy" className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-xl transition-colors duration-300">
+                      <Plus className="w-4 h-4 mr-2" />
+                      New Listing
+                    </Button>
                   </Link>
                 </div>
 
                 {therapiesLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white" />
                   </div>
                 ) : therapies.length > 0 ? (
-                  <Card>
+                  <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl transition-colors duration-300">
                     <Table>
                       <TableHeader>
-                        <TableRow>
-                          <TableHead>Title</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Location</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
+                        <TableRow className="border-b border-gray-200 dark:border-gray-700">
+                          <TableHead className="text-gray-900 dark:text-white">Title</TableHead>
+                          <TableHead className="text-gray-900 dark:text-white">Type</TableHead>
+                          <TableHead className="text-gray-900 dark:text-white">Location</TableHead>
+                          <TableHead className="text-gray-900 dark:text-white">Status</TableHead>
+                          <TableHead className="text-right text-gray-900 dark:text-white">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {therapies.map((therapy) => (
-                          <TableRow key={therapy.id} data-testid={`row-therapy-${therapy.id}`}>
-                            <TableCell className="font-medium">{therapy.title}</TableCell>
-                            <TableCell>{formatType(therapy.type)}</TableCell>
-                            <TableCell>{therapy.location || "—"}</TableCell>
+                          <TableRow key={therapy.id} data-testid={`row-therapy-${therapy.id}`} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-300">
+                            <TableCell className="font-medium text-gray-900 dark:text-white">{therapy.title}</TableCell>
+                            <TableCell className="text-gray-700 dark:text-gray-300">{formatType(therapy.type)}</TableCell>
+                            <TableCell className="text-gray-700 dark:text-gray-300">{therapy.location || "—"}</TableCell>
                             <TableCell>
-                              <Badge variant={therapy.isPublished ? "default" : "secondary"}>
+                              <Badge variant={therapy.isPublished ? "default" : "secondary"} className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
                                 {therapy.isPublished ? "Published" : "Draft"}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end space-x-2">
                                 <Link href={`/admin/therapies/edit/${therapy.id}`}>
-                                  <a>
-                                    <Button variant="ghost" size="icon" data-testid={`button-edit-${therapy.id}`}>
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
-                                  </a>
+                                  <Button variant="ghost" size="icon" data-testid={`button-edit-${therapy.id}`} className="hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors duration-300">
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
                                 </Link>
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => deleteTherapyMutation.mutate(therapy.id)}
                                   data-testid={`button-delete-${therapy.id}`}
+                                  className="hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-colors duration-300"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -218,12 +213,10 @@ export default function AdminDashboard() {
                     </Table>
                   </Card>
                 ) : (
-                  <Card className="p-12 text-center">
-                    <p className="text-muted-foreground mb-4">You haven't created any therapies yet.</p>
+                  <Card className="p-12 text-center bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl transition-colors duration-300">
+                    <p className="text-gray-600 dark:text-gray-400 mb-4 transition-colors duration-300">You haven't created any listings yet.</p>
                     <Link href="/admin/therapies/new">
-                      <a>
-                        <Button>Create Your First Therapy</Button>
-                      </a>
+                      <Button className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-xl transition-colors duration-300">Create Your First Listing</Button>
                     </Link>
                   </Card>
                 )}

@@ -9,7 +9,11 @@ async function throwIfResNotOk(res: Response) {
 
 // Get session ID from localStorage
 function getSessionId(): string | null {
-  return localStorage.getItem("sessionId");
+  try {
+    return localStorage.getItem("sessionId");
+  } catch {
+    return null;
+  }
 }
 
 export async function apiRequest(
@@ -40,7 +44,7 @@ export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
+  async ({ queryKey, signal }) => {
     const sessionId = getSessionId();
     const headers: Record<string, string> = {};
     
@@ -48,17 +52,32 @@ export const getQueryFn: <T>(options: {
       headers["Authorization"] = `Bearer ${sessionId}`;
     }
 
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-      headers,
-    });
+    // Create timeout controller
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    try {
+      const res = await fetch(queryKey.join("/") as string, {
+        credentials: "include",
+        headers,
+        signal: signal || controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
+
+      await throwIfResNotOk(res);
+      return await res.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timeout - please check your connection');
+      }
+      throw error;
     }
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
 export const queryClient = new QueryClient({
@@ -67,11 +86,16 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      refetchOnReconnect: false,
+      staleTime: 60000, // 1 minute
+      gcTime: 300000, // 5 minutes
+      retry: 1,
+      retryDelay: 1000,
+      networkMode: 'online', // Only fetch when online
     },
     mutations: {
       retry: false,
+      networkMode: 'online',
     },
   },
 });

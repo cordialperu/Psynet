@@ -12,9 +12,13 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Guide } from "@shared/schema";
 import { Upload } from "lucide-react";
 import { useState } from "react";
+import { AutoTranslator } from "@/components/auto-translator";
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
+  whatsapp: z.string().min(9, "WhatsApp must be at least 9 digits").regex(/^[+]?[\d\s-()]+$/, "Invalid WhatsApp format"),
+  instagram: z.string().optional(),
+  tiktok: z.string().optional(),
   primarySpecialty: z.string().optional(),
   bio: z.string().optional(),
 });
@@ -30,11 +34,16 @@ export function GuideProfileForm({ guide }: GuideProfileFormProps) {
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [presentationVideo, setPresentationVideo] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isBioTranslated, setIsBioTranslated] = useState(true); // Start as true to allow saving
+  const [originalBio, setOriginalBio] = useState(guide.bio || "");
 
   const form = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       fullName: guide.fullName || "",
+      whatsapp: guide.whatsapp || "",
+      instagram: guide.instagram || "",
+      tiktok: guide.tiktok || "",
       primarySpecialty: guide.primarySpecialty || "",
       bio: guide.bio || "",
     },
@@ -45,7 +54,9 @@ export function GuideProfileForm({ guide }: GuideProfileFormProps) {
       return await apiRequest("PATCH", "/api/guides/profile", data);
     },
     onSuccess: () => {
+      // Only invalidate the current user's queries, not master queries
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/therapies/my-therapies"] });
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
@@ -106,10 +117,10 @@ export function GuideProfileForm({ guide }: GuideProfileFormProps) {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl transition-colors duration-300">
         <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
-          <CardDescription>Update your profile information</CardDescription>
+          <CardTitle className="text-gray-900 dark:text-white transition-colors duration-300">Basic Information</CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 transition-colors duration-300">Update your profile information</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -119,9 +130,9 @@ export function GuideProfileForm({ guide }: GuideProfileFormProps) {
                 name="fullName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Full Name / Company Name</FormLabel>
                     <FormControl>
-                      <Input {...field} data-testid="input-full-name" />
+                      <Input {...field} data-testid="input-full-name" className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -130,15 +141,77 @@ export function GuideProfileForm({ guide }: GuideProfileFormProps) {
 
               <FormField
                 control={form.control}
+                name="whatsapp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">WhatsApp Number *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="tel"
+                        placeholder="+51 987 654 321" 
+                        {...field} 
+                        data-testid="input-whatsapp"
+                        className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="instagram"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Instagram</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="@yourusername" 
+                          {...field} 
+                          data-testid="input-instagram"
+                          className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tiktok"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">TikTok</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="@yourusername" 
+                          {...field} 
+                          data-testid="input-tiktok"
+                          className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+              </div>
+
+              <FormField
+                control={form.control}
                 name="primarySpecialty"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Primary Specialty</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Primary Specialty</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="e.g., Ayahuasca Ceremonies, Plant Medicine" 
                         {...field} 
                         data-testid="input-specialty"
+                        className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>
                     <FormMessage />
@@ -151,12 +224,21 @@ export function GuideProfileForm({ guide }: GuideProfileFormProps) {
                 name="bio"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Bio</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Bio (Optional)</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Tell people about your experience and approach..."
-                        className="min-h-32"
+                        className="min-h-32 rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                         {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // If bio changed from original, require translation
+                          if (e.target.value !== originalBio && e.target.value.length > 0) {
+                            setIsBioTranslated(false);
+                          } else if (e.target.value.length === 0) {
+                            setIsBioTranslated(true); // Empty bio doesn't need translation
+                          }
+                        }}
                         data-testid="textarea-bio"
                       />
                     </FormControl>
@@ -165,22 +247,46 @@ export function GuideProfileForm({ guide }: GuideProfileFormProps) {
                 )}
               />
 
-              <Button 
-                type="submit" 
-                disabled={updateProfileMutation.isPending}
-                data-testid="button-save-profile"
-              >
-                {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
-              </Button>
+              {/* Auto Translator for Bio */}
+              {form.watch("bio") && form.watch("bio") !== originalBio && !isBioTranslated && (
+                <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <AutoTranslator
+                    spanishTitle=""
+                    spanishDescription={form.watch("bio") || ""}
+                    onTranslationComplete={(translations) => {
+                      form.setValue("bio", translations.description);
+                      setOriginalBio(translations.description);
+                      setIsBioTranslated(true);
+                    }}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Button 
+                  type="submit" 
+                  disabled={updateProfileMutation.isPending || (!isBioTranslated && form.watch("bio") !== originalBio && form.watch("bio")?.length > 0)}
+                  data-testid="button-save-profile"
+                  className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-xl transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={!isBioTranslated && form.watch("bio") !== originalBio ? "Please translate your bio before saving" : ""}
+                >
+                  {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
+                </Button>
+                {!isBioTranslated && form.watch("bio") !== originalBio && form.watch("bio")?.length > 0 && (
+                  <p className="text-sm text-orange-600 dark:text-orange-400">
+                    ⚠️ Please translate your bio to English before saving (write in Spanish first)
+                  </p>
+                )}
+              </div>
             </form>
           </Form>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl transition-colors duration-300">
         <CardHeader>
-          <CardTitle>Profile Photo</CardTitle>
-          <CardDescription>Upload your profile photo (JPG or PNG)</CardDescription>
+          <CardTitle className="text-gray-900 dark:text-white transition-colors duration-300">Profile Photo</CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 transition-colors duration-300">Upload your profile photo (JPG or PNG)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {guide.profilePhotoUrl && (
@@ -216,39 +322,101 @@ export function GuideProfileForm({ guide }: GuideProfileFormProps) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl transition-colors duration-300">
         <CardHeader>
-          <CardTitle>Presentation Video</CardTitle>
-          <CardDescription>Upload a video introducing yourself and your practice</CardDescription>
+          <CardTitle className="text-gray-900 dark:text-white transition-colors duration-300">Presentation Video</CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 transition-colors duration-300">Add a YouTube URL or upload a video file</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {guide.presentationVideoUrl && (
-            <video
-              src={guide.presentationVideoUrl}
-              controls
-              className="w-full max-w-md aspect-video rounded-lg"
-            />
+            <div className="w-full max-w-md">
+              {guide.presentationVideoUrl.includes('youtube.com') || guide.presentationVideoUrl.includes('youtu.be') ? (
+                <iframe
+                  src={guide.presentationVideoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                  className="w-full aspect-video rounded-lg"
+                  allowFullScreen
+                />
+              ) : (
+                <video
+                  src={guide.presentationVideoUrl}
+                  controls
+                  className="w-full aspect-video rounded-lg"
+                />
+              )}
+            </div>
           )}
-          <div className="flex items-center space-x-4">
-            <Input
-              type="file"
-              accept="video/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) setPresentationVideo(file);
-              }}
-              data-testid="input-presentation-video"
-            />
-            {presentationVideo && (
-              <Button
-                onClick={() => handleFileUpload(presentationVideo, "video")}
-                disabled={uploading}
-                data-testid="button-upload-video"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                {uploading ? "Uploading..." : "Upload"}
-              </Button>
-            )}
+          
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-2 block">YouTube URL</label>
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  defaultValue={guide.presentationVideoUrl?.includes('youtube') || guide.presentationVideoUrl?.includes('youtu.be') ? guide.presentationVideoUrl : ''}
+                  onBlur={async (e) => {
+                    const url = e.target.value;
+                    if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) {
+                      try {
+                        await apiRequest("PATCH", "/api/guides/profile", { presentationVideoUrl: url });
+                        queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+                        toast({
+                          title: "Video URL saved",
+                          description: "Your YouTube video has been linked.",
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: error instanceof Error ? error.message : "Failed to save video URL",
+                          variant: "destructive",
+                        });
+                      }
+                    }
+                  }}
+                  data-testid="input-youtube-url"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Paste a YouTube link and press Enter or click outside to save
+              </p>
+            </div>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">Or upload a file</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Upload Video File</label>
+              <div className="flex items-center space-x-4">
+                <Input
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) setPresentationVideo(file);
+                  }}
+                  data-testid="input-presentation-video"
+                />
+                {presentationVideo && (
+                  <Button
+                    onClick={() => handleFileUpload(presentationVideo, "video")}
+                    disabled={uploading}
+                    data-testid="button-upload-video"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {uploading ? "Uploading..." : "Upload"}
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Max file size: 50MB. Supported formats: MP4, WebM, MOV
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -1,19 +1,25 @@
-import { db } from "@db";
-import { guides, therapies, type Guide, type Therapy, type InsertGuide, type InsertTherapy } from "@shared/schema";
-import { eq, and, ilike, or, sql } from "drizzle-orm";
+import { db } from "./db";
+import { guides, therapies, adminSettings, type Guide, type Therapy, type InsertGuide, type InsertTherapy, type AdminSettings } from "@shared/schema";
+import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Guide operations
   getGuide(id: string): Promise<Guide | undefined>;
   getGuideByEmail(email: string): Promise<Guide | undefined>;
+  getAllGuides(): Promise<Guide[]>;
   createGuide(guide: InsertGuide & { passwordHash: string }): Promise<Guide>;
   updateGuide(id: string, guide: Partial<InsertGuide>): Promise<Guide>;
+
+  // Admin settings operations
+  getAdminSettings(): Promise<AdminSettings | undefined>;
+  updateAdminSettings(settings: { adminName: string; adminWhatsapp: string; adminWhatsappMexico?: string | null; paypalEmail?: string | null }): Promise<AdminSettings>;
 
   // Therapy operations
   getTherapy(id: string): Promise<Therapy | undefined>;
   getTherapyBySlug(slug: string): Promise<Therapy | undefined>;
   getTherapiesByGuideId(guideId: string): Promise<Therapy[]>;
-  getPublishedTherapies(filters?: { type?: string; location?: string; search?: string }): Promise<Therapy[]>;
+  getAllTherapies(filters?: { type?: string; location?: string; search?: string; guideId?: string; country?: string }): Promise<Therapy[]>;
+  getPublishedTherapies(filters?: { type?: string; location?: string; search?: string; country?: string }): Promise<Therapy[]>;
   getFeaturedTherapies(limit?: number): Promise<Therapy[]>;
   createTherapy(therapy: InsertTherapy): Promise<Therapy>;
   updateTherapy(id: string, therapy: Partial<InsertTherapy>): Promise<Therapy>;
@@ -37,6 +43,10 @@ export class DbStorage implements IStorage {
     return guide;
   }
 
+  async getAllGuides(): Promise<Guide[]> {
+    return await db.select().from(guides).orderBy(sql`${guides.createdAt} DESC`);
+  }
+
   async updateGuide(id: string, updateData: Partial<InsertGuide>): Promise<Guide> {
     const [guide] = await db
       .update(guides)
@@ -58,13 +68,11 @@ export class DbStorage implements IStorage {
   }
 
   async getTherapiesByGuideId(guideId: string): Promise<Therapy[]> {
-    return await db.select().from(therapies).where(eq(therapies.guideId, guideId));
+    return await db.select().from(therapies).where(eq(therapies.guideId, guideId)).orderBy(desc(therapies.updatedAt));
   }
 
-  async getPublishedTherapies(filters?: { type?: string; location?: string; search?: string }): Promise<Therapy[]> {
-    let query = db.select().from(therapies).where(eq(therapies.isPublished, true));
-
-    const conditions = [eq(therapies.isPublished, true)];
+  async getAllTherapies(filters?: { type?: string; location?: string; search?: string; guideId?: string; country?: string }): Promise<Therapy[]> {
+    const conditions = [];
 
     if (filters?.type) {
       conditions.push(eq(therapies.type, filters.type));
@@ -72,6 +80,14 @@ export class DbStorage implements IStorage {
 
     if (filters?.location) {
       conditions.push(ilike(therapies.location, `%${filters.location}%`));
+    }
+
+    if (filters?.guideId) {
+      conditions.push(eq(therapies.guideId, filters.guideId));
+    }
+
+    if (filters?.country) {
+      conditions.push(eq(therapies.country, filters.country));
     }
 
     if (filters?.search) {
@@ -84,14 +100,59 @@ export class DbStorage implements IStorage {
       );
     }
 
-    return await db.select().from(therapies).where(and(...conditions));
+    if (conditions.length > 0) {
+      return await db.select().from(therapies).where(and(...conditions)).orderBy(desc(therapies.updatedAt));
+    }
+
+    return await db.select().from(therapies).orderBy(desc(therapies.updatedAt));
+  }
+
+  async getPublishedTherapies(filters?: { type?: string; location?: string; search?: string; country?: string }): Promise<Therapy[]> {
+    try {
+      const conditions = [eq(therapies.published, true)];
+
+      if (filters?.type) {
+        conditions.push(eq(therapies.type, filters.type));
+      }
+
+      if (filters?.location) {
+        conditions.push(ilike(therapies.location, `%${filters.location}%`));
+      }
+
+      if (filters?.country) {
+        conditions.push(eq(therapies.country, filters.country));
+      }
+
+      if (filters?.search) {
+        conditions.push(
+          or(
+            ilike(therapies.title, `%${filters.search}%`),
+            ilike(therapies.guideName, `%${filters.search}%`),
+            ilike(therapies.description, `%${filters.search}%`)
+          )!
+        );
+      }
+
+      const result = await Promise.race([
+        db.select().from(therapies).where(and(...conditions)).orderBy(desc(therapies.updatedAt)),
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Database query timeout')), 8000)
+        )
+      ]);
+
+      return result;
+    } catch (error) {
+      console.error('Error fetching published therapies:', error);
+      throw error;
+    }
   }
 
   async getFeaturedTherapies(limit: number = 6): Promise<Therapy[]> {
     return await db
       .select()
       .from(therapies)
-      .where(eq(therapies.isPublished, true))
+      .where(eq(therapies.published, true))
+      .orderBy(desc(therapies.updatedAt))
       .limit(limit);
   }
 
@@ -111,6 +172,31 @@ export class DbStorage implements IStorage {
 
   async deleteTherapy(id: string): Promise<void> {
     await db.delete(therapies).where(eq(therapies.id, id));
+  }
+
+  // Admin settings operations
+  async getAdminSettings(): Promise<AdminSettings | undefined> {
+    const [settings] = await db.select().from(adminSettings).limit(1);
+    return settings;
+  }
+
+  async updateAdminSettings(data: { adminName: string; adminWhatsapp: string; adminWhatsappMexico?: string | null; paypalEmail?: string | null }): Promise<AdminSettings> {
+    // Get existing settings
+    const existing = await this.getAdminSettings();
+    
+    if (existing) {
+      // Update existing
+      const [updated] = await db
+        .update(adminSettings)
+        .set({ ...data, updatedAt: sql`NOW()` })
+        .where(eq(adminSettings.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      // Create new
+      const [created] = await db.insert(adminSettings).values(data).returning();
+      return created;
+    }
   }
 }
 

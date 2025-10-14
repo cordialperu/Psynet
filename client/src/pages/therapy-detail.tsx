@@ -21,6 +21,10 @@ export default function TherapyDetail() {
     enabled: !!params?.slug,
   });
 
+  const { data: publicConfig } = useQuery<{ paypalEmail: string | null }>({
+    queryKey: ["/api/public/config"],
+  });
+
   const formatType = (type: string) => {
     return type.split("-").map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
@@ -42,6 +46,48 @@ export default function TherapyDetail() {
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
     
     window.open(whatsappUrl, '_blank');
+  };
+
+  const handlePayPalClick = () => {
+    if (!therapy) return;
+    const business = publicConfig?.paypalEmail;
+    if (!business) {
+      alert("PayPal is not configured yet. Please contact the administrator.");
+      return;
+    }
+    
+    // Preparar información para el mensaje de WhatsApp al admin
+    const paymentInfo = {
+      type: formatType(therapy.type),
+      title: therapy.title,
+      price: therapy.price,
+      currency: therapy.currency || 'USD',
+      guide: therapy.guideName,
+      location: therapy.location,
+      date: selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'N/A',
+      duration: therapy.duration || 'N/A'
+    };
+    
+    // Guardar info en localStorage para enviar después del pago
+    localStorage.setItem('pendingPayPalPayment', JSON.stringify(paymentInfo));
+    localStorage.setItem('adminWhatsApp', import.meta.env.VITE_WHATSAPP_PHONE_NUMBER || '');
+    
+    const amount = therapy.price ? parseFloat(therapy.price).toFixed(2) : undefined;
+    const currency = therapy.currency || "USD";
+    const itemName = encodeURIComponent(`${therapy.title} - ${therapy.guideName || "Guide"}`);
+    const returnUrl = window.location.origin + "/payment/success";
+    const cancelUrl = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams({
+      cmd: "_xclick",
+      business,
+      item_name: itemName,
+      currency_code: currency,
+      return: returnUrl,
+      cancel_return: cancelUrl,
+    });
+    if (amount) params.set("amount", amount);
+    const paypalUrl = `https://www.paypal.com/cgi-bin/webscr?${params.toString()}`;
+    window.location.href = paypalUrl;
   };
 
   if (isLoading) {
@@ -91,10 +137,13 @@ export default function TherapyDetail() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Video/Image */}
             <div className="aspect-video rounded-xl overflow-hidden bg-muted">
-              {therapy.presentationVideoUrl ? (
+              {therapy.videoUrl ? (
                 <video
-                  src={therapy.presentationVideoUrl}
+                  src={therapy.videoUrl}
                   controls
+                  autoPlay
+                  muted
+                  playsInline
                   className="w-full h-full object-cover"
                   data-testid="video-presentation"
                 />
@@ -236,8 +285,21 @@ export default function TherapyDetail() {
                   Reserve Your Spot - Consult via WhatsApp
                 </Button>
 
+                {therapy.price && (
+                  <Button
+                    size="lg"
+                    variant="default"
+                    className="w-full py-6 text-lg bg-blue-600 hover:bg-blue-700"
+                    onClick={handlePayPalClick}
+                    disabled={!publicConfig?.paypalEmail}
+                    data-testid="button-paypal"
+                  >
+                    Pay with PayPal
+                  </Button>
+                )}
+
                 <p className="text-sm text-muted-foreground text-center">
-                  Click to send a WhatsApp message to the guide and confirm your booking
+                  Click to send a WhatsApp message to the guide and confirm your booking. You can also pay securely via PayPal if available.
                 </p>
               </div>
             </div>

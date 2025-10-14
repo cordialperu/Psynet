@@ -1,10 +1,11 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { createSession, deleteSession, requireAuth } from "./auth";
+import { createSession, deleteSession, requireAuth, createMasterSession, requireMasterAuth, debugSessions } from "./auth";
 import { insertGuideSchema, insertTherapySchema } from "@shared/schema";
 import { randomUUID } from "crypto";
 import bcrypt from "bcrypt";
+import { createNewListingNotification, createUpdateListingNotification, generateWhatsAppLink } from "./whatsapp";
 
 // Helper to generate slug from title
 function generateSlug(title: string): string {
@@ -31,7 +32,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
-      const { fullName, email, password } = req.body;
+      const { fullName, email, whatsapp, instagram, tiktok, password } = req.body;
+      
+      // Validate required fields
+      if (!fullName || !email || !whatsapp || !password) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Validate at least one social media
+      if (!instagram && !tiktok) {
+        return res.status(400).json({ message: "At least Instagram or TikTok is required" });
+      }
       
       // Check if guide already exists
       const existing = await storage.getGuideByEmail(email);
@@ -40,13 +51,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create guide with hashed password
-      const guideId = randomUUID();
       const passwordHash = await hashPassword(password);
       
       const guide = await storage.createGuide({
-        id: guideId,
         fullName,
         email,
+        whatsapp,
+        instagram: instagram || null,
+        tiktok: tiktok || null,
         passwordHash,
       });
 
@@ -108,6 +120,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       delete updateData.email;
 
       const guide = await storage.updateGuide(session.guideId, updateData);
+      
+      // If fullName or profilePhotoUrl changed, update all therapies
+      if (updateData.fullName || updateData.profilePhotoUrl) {
+        const therapies = await storage.getTherapiesByGuideId(session.guideId);
+        const therapyUpdates: any = {};
+        
+        if (updateData.fullName) {
+          therapyUpdates.guideName = updateData.fullName;
+        }
+        if (updateData.profilePhotoUrl) {
+          therapyUpdates.guidePhotoUrl = updateData.profilePhotoUrl;
+        }
+        
+        // Update all therapies with new guide info
+        for (const therapy of therapies) {
+          await storage.updateTherapy(therapy.id, therapyUpdates);
+        }
+        
+        console.log(`✅ Updated ${therapies.length} therapies with new guide info`);
+      }
+      
       res.json(guide);
     } catch (error) {
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update profile" });
@@ -127,11 +160,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/therapies/published", async (req: Request, res: Response) => {
     try {
-      const { type, location, search } = req.query;
+      const { type, location, search, country } = req.query;
       const therapies = await storage.getPublishedTherapies({
         type: type as string,
         location: location as string,
         search: search as string,
+        country: country as string,
       });
       res.json(therapies);
     } catch (error) {
@@ -195,9 +229,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         guideName: guide.fullName,
         guidePhotoUrl: guide.profilePhotoUrl,
         slug: generateSlug(req.body.title),
+        approvalStatus: "pending", // Nueva terapia en revisión
+        published: false, // No publicada hasta que sea aprobada
       };
 
+      // Log video URL for debugging
+      if (therapyData.videoUrl) {
+        console.log(`🎥 Video URL received: ${therapyData.videoUrl}`);
+      } else {
+        console.log("⚠️ Warning: No video URL provided");
+      }
+
       const therapy = await storage.createTherapy(therapyData);
+      
+      console.log(`✅ Nueva terapia creada por ${guide.fullName}: ${therapy.title}`);
+      console.log(`📋 ID: ${therapy.id} - Estado: pending`);
+      
+      // Enviar notificación por WhatsApp a ambos administradores (Perú y México) en paralelo
+      try {
+        const adminSettings = await storage.getAdminSettings();
+        if (adminSettings && (adminSettings.adminWhatsapp || adminSettings.adminWhatsappMexico)) {
+          const adminUrl = process.env.APP_URL || "http://localhost:5001";
+          const message = createNewListingNotification({
+            category: therapy.category || "ceremonias",
+            title: therapy.title,
+            price: therapy.price || "0",
+            currency: therapy.currency || "USD",
+            guideName: guide.fullName,
+            guidePhone: guide.whatsapp,
+            therapyId: therapy.id,
+            adminUrl,
+          });
+          
+          // Enviar a administrador de Perú
+          if (adminSettings.adminWhatsapp) {
+            const whatsappLinkPeru = generateWhatsAppLink(adminSettings.adminWhatsapp, message);
+            console.log(`📱 WhatsApp notification link generated for Peru admin: ${adminSettings.adminName}`);
+            console.log(`🔗 Perú: ${whatsappLinkPeru}`);
+          }
+          
+          // Enviar a administrador de México
+          if (adminSettings.adminWhatsappMexico) {
+            const whatsappLinkMexico = generateWhatsAppLink(adminSettings.adminWhatsappMexico, message);
+            console.log(`📱 WhatsApp notification link generated for Mexico admin`);
+            console.log(`🔗 México: ${whatsappLinkMexico}`);
+          }
+          
+          // In production, you would send this via WhatsApp API
+          // For now, we just log it so the admin can manually open it
+        } else {
+          console.log("⚠️ Admin WhatsApp not configured, skipping notification");
+        }
+      } catch (notifError) {
+        console.error("❌ Error sending WhatsApp notification:", notifError);
+        // Don't fail the request if notification fails
+      }
+      
       res.json(therapy);
     } catch (error) {
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to create therapy" });
@@ -219,10 +306,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updateData = { ...req.body };
 
+      // Log video URL for debugging
+      if (updateData.videoUrl) {
+        console.log(`🎥 Video URL updated: ${updateData.videoUrl}`);
+      }
+
       // Update slug if title changed
       if (updateData.title && updateData.title !== therapy.title) {
         updateData.slug = generateSlug(updateData.title);
       }
+
+      // Set to pending review and unpublish when guide makes changes
+      updateData.approvalStatus = "pending";
+      updateData.published = false;
 
       // Update guide info if available
       const guide = await storage.getGuide(session.guideId);
@@ -232,6 +328,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedTherapy = await storage.updateTherapy(req.params.id, updateData);
+      
+      console.log(`✏️ Terapia actualizada por ${guide?.fullName}: ${updatedTherapy.title}`);
+      console.log(`📋 ID: ${updatedTherapy.id} - Estado: pending (requiere revisión)`);
+      
+      // Enviar notificación por WhatsApp a ambos administradores (Perú y México) en paralelo
+      try {
+        const adminSettings = await storage.getAdminSettings();
+        if (adminSettings && (adminSettings.adminWhatsapp || adminSettings.adminWhatsappMexico) && guide) {
+          const adminUrl = process.env.APP_URL || "http://localhost:5001";
+          const message = createUpdateListingNotification({
+            category: updatedTherapy.category || "ceremonias",
+            title: updatedTherapy.title,
+            price: updatedTherapy.price || "0",
+            currency: updatedTherapy.currency || "USD",
+            guideName: guide.fullName,
+            guidePhone: guide.whatsapp,
+            therapyId: updatedTherapy.id,
+            adminUrl,
+          });
+          
+          // Enviar a administrador de Perú
+          if (adminSettings.adminWhatsapp) {
+            const whatsappLinkPeru = generateWhatsAppLink(adminSettings.adminWhatsapp, message);
+            console.log(`📱 WhatsApp notification link generated for Peru admin: ${adminSettings.adminName}`);
+            console.log(`🔗 Perú: ${whatsappLinkPeru}`);
+          }
+          
+          // Enviar a administrador de México
+          if (adminSettings.adminWhatsappMexico) {
+            const whatsappLinkMexico = generateWhatsAppLink(adminSettings.adminWhatsappMexico, message);
+            console.log(`📱 WhatsApp notification link generated for Mexico admin`);
+            console.log(`🔗 México: ${whatsappLinkMexico}`);
+          }
+        } else {
+          console.log("⚠️ Admin WhatsApp not configured, skipping notification");
+        }
+      } catch (notifError) {
+        console.error("❌ Error sending WhatsApp notification:", notifError);
+        // Don't fail the request if notification fails
+      }
+      
       res.json(updatedTherapy);
     } catch (error) {
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update therapy" });
@@ -255,6 +392,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Therapy deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to delete therapy" });
+    }
+  });
+
+  // Master Admin routes
+  app.post("/api/auth/master-login", async (req: Request, res: Response) => {
+    try {
+      const { code } = req.body;
+      
+      if (code === "333") {
+        const sessionId = createMasterSession();
+        console.log("✅ Master login successful, sessionId:", sessionId.substring(0, 8) + "...");
+        debugSessions();
+        res.json({ sessionId, isMaster: true });
+      } else {
+        res.status(401).json({ message: "Código inválido" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Master login failed" });
+    }
+  });
+
+  app.get("/api/master/therapies", requireMasterAuth, async (req: Request, res: Response) => {
+    try {
+      const { type, location, search, guideId, country } = req.query;
+      const therapies = await storage.getAllTherapies({
+        type: type as string,
+        location: location as string,
+        search: search as string,
+        guideId: guideId as string,
+        country: country as string,
+      });
+      res.json(therapies);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch therapies" });
+    }
+  });
+
+  app.get("/api/master/therapies/:id", requireMasterAuth, async (req: Request, res: Response) => {
+    try {
+      const therapy = await storage.getTherapy(req.params.id);
+      
+      if (!therapy) {
+        return res.status(404).json({ message: "Therapy not found" });
+      }
+
+      res.json(therapy);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch therapy" });
+    }
+  });
+
+  
+
+  app.patch("/api/master/therapies/:id", requireMasterAuth, async (req: Request, res: Response) => {
+    try {
+      console.log("🔵 PATCH /api/master/therapies/:id");
+      console.log("🔵 Therapy ID:", req.params.id);
+      console.log("🔵 Request body:", req.body);
+      
+      const therapy = await storage.getTherapy(req.params.id);
+
+      if (!therapy) {
+        console.log("❌ Therapy not found");
+        return res.status(404).json({ message: "Therapy not found" });
+      }
+
+      console.log("🟢 Therapy found:", therapy.title);
+
+      const updateData = { ...req.body };
+
+      // Update slug if title changed
+      if (updateData.title && updateData.title !== therapy.title) {
+        updateData.slug = generateSlug(updateData.title);
+        console.log("🔄 Slug updated:", updateData.slug);
+      }
+
+      console.log("📝 Update data:", updateData);
+      const updatedTherapy = await storage.updateTherapy(req.params.id, updateData);
+      console.log("✅ Therapy updated successfully");
+      
+      res.json(updatedTherapy);
+    } catch (error) {
+      console.error("❌ Error updating therapy:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update therapy" });
+    }
+  });
+
+  app.post("/api/master/therapies/:id/approve", requireMasterAuth, async (req: Request, res: Response) => {
+    try {
+      const therapy = await storage.getTherapy(req.params.id);
+
+      if (!therapy) {
+        return res.status(404).json({ message: "Therapy not found" });
+      }
+
+      const updatedTherapy = await storage.updateTherapy(req.params.id, {
+        approvalStatus: "approved",
+        published: true, // Auto-publicar cuando se aprueba
+      });
+
+      res.json(updatedTherapy);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to approve therapy" });
+    }
+  });
+
+  app.post("/api/master/therapies/:id/reject", requireMasterAuth, async (req: Request, res: Response) => {
+    try {
+      const therapy = await storage.getTherapy(req.params.id);
+
+      if (!therapy) {
+        return res.status(404).json({ message: "Therapy not found" });
+      }
+
+      const updatedTherapy = await storage.updateTherapy(req.params.id, {
+        approvalStatus: "rejected",
+        published: false,
+      });
+
+      res.json(updatedTherapy);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to reject therapy" });
+    }
+  });
+
+  // Get all guides (master admin only)
+  app.get("/api/admin/master/guides", requireMasterAuth, async (req: Request, res: Response) => {
+    try {
+      console.log("🔵 GET /api/admin/master/guides - Fetching all guides");
+      const guides = await storage.getAllGuides();
+      console.log(`✅ Found ${guides.length} guides`);
+      res.json(guides);
+    } catch (error) {
+      console.error("❌ Error fetching guides:", error);
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch guides" });
+    }
+  });
+
+  // Admin settings routes
+  app.get("/api/admin/master/settings", requireMasterAuth, async (req: Request, res: Response) => {
+    try {
+      const settings = await storage.getAdminSettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch settings" });
+    }
+  });
+
+  app.post("/api/admin/master/settings", requireMasterAuth, async (req: Request, res: Response) => {
+    try {
+      const { adminName, adminWhatsapp, adminWhatsappMexico, paypalEmail } = req.body;
+      const settings = await storage.updateAdminSettings({ adminName, adminWhatsapp, adminWhatsappMexico, paypalEmail });
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update settings" });
+    }
+  });
+
+  // Public config endpoint (no auth): expose only non-sensitive config for client
+  app.get("/api/public/config", async (_req: Request, res: Response) => {
+    try {
+      const settings = await storage.getAdminSettings();
+      res.json({
+        paypalEmail: settings?.paypalEmail ?? null,
+        adminWhatsapp: settings?.adminWhatsapp ?? null,
+        adminName: settings?.adminName ?? null,
+      });
+    } catch (error) {
+      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch public config" });
     }
   });
 

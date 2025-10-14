@@ -11,15 +11,50 @@ export default {
         sm: ".1875rem", /* 3px */
       },
       colors: {
-        // Flat / base colors (regular buttons)
-        background: "hsl(var(--background) / <alpha-value>)",
-        foreground: "hsl(var(--foreground) / <alpha-value>)",
+        // Organic Natural Colors
+        sage: {
+          50: "hsl(var(--sage-50))",
+          100: "hsl(var(--sage-100))",
+          200: "hsl(var(--sage-200))",
+          300: "hsl(var(--sage-300))",
+          400: "hsl(var(--sage-400))",
+          500: "hsl(var(--sage-500))",
+          600: "hsl(var(--sage-600))",
+          700: "hsl(var(--sage-700))",
+          800: "hsl(var(--sage-800))",
+          900: "hsl(var(--sage-900))",
+        },
+        moss: {
+          50: "hsl(var(--moss-50))",
+          100: "hsl(var(--moss-100))",
+          200: "hsl(var(--moss-200))",
+          300: "hsl(var(--moss-300))",
+          400: "hsl(var(--moss-400))",
+          500: "hsl(var(--moss-500))",
+          600: "hsl(var(--moss-600))",
+          700: "hsl(var(--moss-700))",
+          800: "hsl(var(--moss-800))",
+          900: "hsl(var(--moss-900))",
+        },
+        earth: {
+          50: "hsl(var(--earth-50))",
+          100: "hsl(var(--earth-100))",
+          200: "hsl(var(--earth-200))",
+          300: "hsl(var(--earth-300))",
+          400: "hsl(var(--earth-400))",
+          500: "hsl(var(--earth-500))",
+          600: "hsl(var(--earth-600))",
+          700: "hsl(var(--earth-700))",
+          800: "hsl(var(--earth-800))",
+          900: "hsl(var(--earth-900))",
+        },
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
         border: "hsl(var(--border) / <alpha-value>)",
         input: "hsl(var(--input) / <alpha-value>)",
         card: {
           DEFAULT: "hsl(var(--card) / <alpha-value>)",
           foreground: "hsl(var(--card-foreground) / <alpha-value>)",
-          border: "hsl(var(--card-border) / <alpha-value>)",
         },
         popover: {
           DEFAULT: "hsl(var(--popover) / <alpha-value>)",
@@ -83,9 +118,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
-        serif: ["var(--font-serif)"],
-        mono: ["var(--font-mono)"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        heading: ["Poppins", "Inter", "system-ui", "sans-serif"],
+        mono: ["ui-monospace", "monospace"],
       },
       keyframes: {
         "accordion-down": {
@@ -103,5 +138,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  plugins: [require("tailwindcss-animate")],
 } satisfies Config;

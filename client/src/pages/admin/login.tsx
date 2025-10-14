@@ -53,29 +53,31 @@ export default function AdminLogin() {
   });
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="font-serif text-3xl">Guide Login</CardTitle>
-          <CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 transition-colors duration-300 px-4">
+      <Card className="w-full max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl transition-colors duration-300">
+        <CardHeader className="text-center space-y-2 pt-8 pb-6">
+          <div className="text-5xl mb-2">🌿</div>
+          <CardTitle className="font-serif text-3xl md:text-4xl text-gray-900 dark:text-white transition-colors duration-300">Guide Login</CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400 transition-colors duration-300">
             Sign in to manage your profile and therapies
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-8">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-6">
+            <form onSubmit={form.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-5">
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Email</FormLabel>
                     <FormControl>
                       <Input 
                         type="email" 
                         placeholder="your@email.com" 
                         {...field} 
                         data-testid="input-email"
+                        className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>
                     <FormMessage />
@@ -88,13 +90,14 @@ export default function AdminLogin() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Password</FormLabel>
                     <FormControl>
                       <Input 
                         type="password" 
                         placeholder="••••••••" 
                         {...field} 
                         data-testid="input-password"
+                        className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>
                     <FormMessage />
@@ -104,7 +107,7 @@ export default function AdminLogin() {
 
               <Button 
                 type="submit" 
-                className="w-full" 
+                className="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 rounded-xl py-6 text-base font-medium transition-colors duration-300" 
                 disabled={loginMutation.isPending}
                 data-testid="button-login"
               >
@@ -114,14 +117,18 @@ export default function AdminLogin() {
           </Form>
 
           <div className="mt-6 text-center text-sm">
-            <p className="text-muted-foreground">
+            <p className="text-gray-600 dark:text-gray-400 transition-colors duration-300">
               Don't have an account?{" "}
-              <Link href="/admin/register">
-                <a className="text-primary hover:underline font-medium" data-testid="link-register">
-                  Register here
-                </a>
+              <Link href="/admin/register" className="text-gray-900 dark:text-white hover:underline font-medium transition-colors duration-300" data-testid="link-register">
+                Register here
               </Link>
             </p>
+          </div>
+          
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 text-center">
+            <Link href="/" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300">
+              ← Back to home
+            </Link>
           </div>
         </CardContent>
       </Card>

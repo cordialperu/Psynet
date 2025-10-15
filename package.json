@@ -4,6 +4,9 @@
   "type": "module",
   "description": "Curated marketplace for authentic healing experiences and alternative therapies in Peru",
   "main": "dist/index.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "node --loader tsx/esm server/index.ts",
     "build": "vite build && npm run build:server",
@@ -111,6 +114,6 @@
     "vitest": "^1.0.4"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": "20.x"
   }
 }

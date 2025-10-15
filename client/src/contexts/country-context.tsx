@@ -12,13 +12,22 @@ const CountryContext = createContext<CountryContextType | undefined>(undefined);
 export function CountryProvider({ children }: { children: ReactNode }) {
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>(() => {
     // Initialize from localStorage or default to Mexico
-    const saved = localStorage.getItem("selectedCountry");
-    return (saved === "MX" || saved === "PE") ? saved : "MX";
+    try {
+      const saved = localStorage.getItem("selectedCountry");
+      return (saved === "MX" || saved === "PE") ? saved : "MX";
+    } catch (error) {
+      console.warn('localStorage not available, using default country MX:', error);
+      return "MX";
+    }
   });
 
   useEffect(() => {
     // Save to localStorage whenever it changes
-    localStorage.setItem("selectedCountry", selectedCountry);
+    try {
+      localStorage.setItem("selectedCountry", selectedCountry);
+    } catch (error) {
+      console.warn('Failed to save country to localStorage:', error);
+    }
   }, [selectedCountry]);
 
   return (

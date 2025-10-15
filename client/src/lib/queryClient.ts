@@ -99,3 +99,5 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+console.log('QueryClient initialized successfully');

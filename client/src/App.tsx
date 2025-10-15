@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CountryProvider } from "@/contexts/country-context";
 import { ProtectedRoute } from "@/components/protected-route";
+import { useEffect } from "react";
 import Home from "@/pages/home";
 import HomeV2 from "@/pages/home-v2";
 import HomePsychedelic from "@/pages/home-psychedelic";
@@ -109,6 +110,12 @@ function Router() {
 }
 
 function App() {
+  // Log when App mounts
+  useEffect(() => {
+    console.log('App mounted successfully');
+    console.log('Current route:', window.location.pathname);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark" storageKey="psynet-theme">

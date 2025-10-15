@@ -64,9 +64,19 @@ export default function HomeAppleV3() {
   const { data: therapies = [], isLoading, isError } = useQuery<Therapy[]>({
     queryKey: ["/api/therapies/published", { country: selectedCountry }],
     queryFn: async () => {
-      const response = await fetch(`/api/therapies/published?country=${selectedCountry}`);
-      if (!response.ok) throw new Error('Failed to fetch therapies');
-      return response.json();
+      try {
+        const response = await fetch(`/api/therapies/published?country=${selectedCountry}`);
+        if (!response.ok) {
+          console.error('API error:', response.status, response.statusText);
+          return []; // Return empty array on error
+        }
+        const data = await response.json();
+        console.log('Fetched therapies:', data.length);
+        return data;
+      } catch (error) {
+        console.error('Fetch error:', error);
+        return []; // Return empty array on network error
+      }
     },
     retry: 0, // No retry to avoid hanging
     staleTime: 60000,

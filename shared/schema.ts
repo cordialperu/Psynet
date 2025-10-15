@@ -1,6 +1,5 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, uuid, timestamp, numeric, boolean, json, integer } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Guides table - stores therapeutic guide profiles
@@ -94,18 +93,51 @@ export const adminSettings = pgTable("admin_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
-// Insert schemas
-export const insertGuideSchema = createInsertSchema(guides).omit({
-  id: true,
-  passwordHash: true,
-  createdAt: true,
-  updatedAt: true,
+// Insert schemas - using Zod directly
+export const insertGuideSchema = z.object({
+  fullName: z.string().min(1),
+  email: z.string().email(),
+  whatsapp: z.string().min(1),
+  instagram: z.string().optional().nullable(),
+  tiktok: z.string().optional().nullable(),
+  password: z.string().min(8),
+  primarySpecialty: z.string().optional(),
+  bio: z.string().optional(),
+  profilePhotoUrl: z.string().optional(),
+  presentationVideoUrl: z.string().optional(),
+  activeTherapies: z.array(z.string()).optional(),
 });
 
-export const insertTherapySchema = createInsertSchema(therapies).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertTherapySchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  type: z.string().min(1),
+  category: z.string().default("ceremonias"),
+  country: z.string().default("PE"),
+  basePrice: z.string().optional(),
+  platformFee: z.string().optional(),
+  language: z.string().default("es"),
+  location: z.string().optional(),
+  durationMinutes: z.number().optional(),
+  maxParticipants: z.number().optional(),
+  specificFields: z.record(z.any()).optional(),
+  videoUrl: z.string().optional(),
+  googleMapsUrl: z.string().optional(),
+  published: z.boolean().default(false),
+  publishedOn: z.string().optional(),
+  approval: z.string().default("pending"),
+  approvalNotes: z.string().optional(),
+  shippingOptions: z.object({
+    envio: z.boolean().optional(),
+    recojo: z.boolean().optional(),
+    address: z.string().optional(),
+  }).optional(),
+  inventory: z.number().optional(),
+  availableTimes: z.array(z.object({
+    date: z.string(),
+    times: z.array(z.string()),
+  })).optional(),
+  fixedTime: z.string().optional(),
 });
 
 // Types

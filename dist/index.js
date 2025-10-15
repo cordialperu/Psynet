@@ -43,7 +43,7 @@ __export(schema_exports, {
 });
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, uuid, timestamp, numeric, boolean, json, integer } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
 var guides = pgTable("guides", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   fullName: varchar("full_name", { length: 255 }).notNull(),
@@ -136,16 +136,49 @@ var adminSettings = pgTable("admin_settings", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow()
 });
-var insertGuideSchema = createInsertSchema(guides).omit({
-  id: true,
-  passwordHash: true,
-  createdAt: true,
-  updatedAt: true
+var insertGuideSchema = z.object({
+  fullName: z.string().min(1),
+  email: z.string().email(),
+  whatsapp: z.string().min(1),
+  instagram: z.string().optional().nullable(),
+  tiktok: z.string().optional().nullable(),
+  password: z.string().min(8),
+  primarySpecialty: z.string().optional(),
+  bio: z.string().optional(),
+  profilePhotoUrl: z.string().optional(),
+  presentationVideoUrl: z.string().optional(),
+  activeTherapies: z.array(z.string()).optional()
 });
-var insertTherapySchema = createInsertSchema(therapies).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true
+var insertTherapySchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  type: z.string().min(1),
+  category: z.string().default("ceremonias"),
+  country: z.string().default("PE"),
+  basePrice: z.string().optional(),
+  platformFee: z.string().optional(),
+  language: z.string().default("es"),
+  location: z.string().optional(),
+  durationMinutes: z.number().optional(),
+  maxParticipants: z.number().optional(),
+  specificFields: z.record(z.any()).optional(),
+  videoUrl: z.string().optional(),
+  googleMapsUrl: z.string().optional(),
+  published: z.boolean().default(false),
+  publishedOn: z.string().optional(),
+  approval: z.string().default("pending"),
+  approvalNotes: z.string().optional(),
+  shippingOptions: z.object({
+    envio: z.boolean().optional(),
+    recojo: z.boolean().optional(),
+    address: z.string().optional()
+  }).optional(),
+  inventory: z.number().optional(),
+  availableTimes: z.array(z.object({
+    date: z.string(),
+    times: z.array(z.string())
+  })).optional(),
+  fixedTime: z.string().optional()
 });
 var categories = [
   "ceremonias",
@@ -486,6 +519,24 @@ async function verifyPassword(password, hash) {
   return await bcrypt.compare(password, hash);
 }
 async function registerRoutes(app2) {
+  app2.get("/health", async (_req, res) => {
+    try {
+      res.json({
+        status: "ok",
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || "development"
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "error",
+        message: error instanceof Error ? error.message : "Health check failed"
+      });
+    }
+  });
+  app2.get("/api/version", (_req, res) => {
+    res.json({ version: "1.0.0", api: "Psynet v1" });
+  });
   app2.post("/api/auth/register", async (req, res) => {
     try {
       const { fullName, email, whatsapp, instagram, tiktok, password } = req.body;
@@ -585,15 +636,19 @@ async function registerRoutes(app2) {
   app2.get("/api/therapies/published", async (req, res) => {
     try {
       const { type, location, search, country } = req.query;
+      console.log("Fetching published therapies with filters:", { type, location, search, country });
       const therapies2 = await storage.getPublishedTherapies({
         type,
         location,
         search,
         country
       });
+      console.log(`Found ${therapies2.length} published therapies`);
       res.json(therapies2);
     } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch therapies" });
+      const message = error instanceof Error ? error.message : "Failed to fetch therapies";
+      console.error("Error fetching published therapies:", error);
+      res.status(500).json({ message, error: process.env.NODE_ENV === "development" ? String(error) : void 0 });
     }
   });
   app2.get("/api/therapies/slug/:slug", async (req, res) => {

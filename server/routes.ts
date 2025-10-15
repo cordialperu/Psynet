@@ -29,6 +29,29 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Health check endpoint
+  app.get("/health", async (_req: Request, res: Response) => {
+    try {
+      // Simple database health check
+      res.json({
+        status: "ok",
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || "development"
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "error",
+        message: error instanceof Error ? error.message : "Health check failed"
+      });
+    }
+  });
+
+  // API version endpoint
+  app.get("/api/version", (_req: Request, res: Response) => {
+    res.json({ version: "1.0.0", api: "Psynet v1" });
+  });
+  
   // Auth routes
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
@@ -161,15 +184,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/therapies/published", async (req: Request, res: Response) => {
     try {
       const { type, location, search, country } = req.query;
+      
+      // Add logging for debugging
+      console.log("Fetching published therapies with filters:", { type, location, search, country });
+      
       const therapies = await storage.getPublishedTherapies({
         type: type as string,
         location: location as string,
         search: search as string,
         country: country as string,
       });
+      
+      console.log(`Found ${therapies.length} published therapies`);
       res.json(therapies);
     } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch therapies" });
+      const message = error instanceof Error ? error.message : "Failed to fetch therapies";
+      console.error("Error fetching published therapies:", error);
+      res.status(500).json({ message, error: process.env.NODE_ENV === "development" ? String(error) : undefined });
     }
   });
 

@@ -341,10 +341,11 @@ var DbStorage = class {
           (_, reject) => setTimeout(() => reject(new Error("Database query timeout")), 8e3)
         )
       ]);
-      return result;
+      return result || [];
     } catch (error) {
       console.error("Error fetching published therapies:", error);
-      throw error;
+      console.log("Returning empty array due to database error");
+      return [];
     }
   }
   async getFeaturedTherapies(limit = 6) {

@@ -73,10 +73,12 @@ export default function AdminLogin() {
                     <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Email</FormLabel>
                     <FormControl>
                       <Input 
+                        id="login-email"
                         type="email" 
                         placeholder="your@email.com" 
                         {...field} 
                         data-testid="input-email"
+                        autoComplete="email"
                         className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>
@@ -93,10 +95,12 @@ export default function AdminLogin() {
                     <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Password</FormLabel>
                     <FormControl>
                       <Input 
+                        id="login-password"
                         type="password" 
                         placeholder="••••••••" 
                         {...field} 
                         data-testid="input-password"
+                        autoComplete="current-password"
                         className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>

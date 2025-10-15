@@ -89,6 +89,7 @@ export default function AdminRegister() {
                     <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Full Name</FormLabel>
                     <FormControl>
                       <Input 
+                        id="full-name"
                         placeholder="John Doe" 
                         {...field} 
                         data-testid="input-full-name"
@@ -108,10 +109,12 @@ export default function AdminRegister() {
                     <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Email *</FormLabel>
                     <FormControl>
                       <Input 
+                        id="email"
                         type="email" 
                         placeholder="your@email.com" 
                         {...field} 
                         data-testid="input-email"
+                        autoComplete="email"
                         className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>
@@ -128,10 +131,12 @@ export default function AdminRegister() {
                     <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">WhatsApp *</FormLabel>
                     <FormControl>
                       <Input 
+                        id="whatsapp"
                         type="tel" 
                         placeholder="+51 987 654 321" 
                         {...field} 
                         data-testid="input-whatsapp"
+                        autoComplete="tel"
                         className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>
@@ -151,9 +156,11 @@ export default function AdminRegister() {
                       <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Instagram</FormLabel>
                       <FormControl>
                         <Input 
+                          id="instagram"
                           placeholder="@yourusername" 
                           {...field} 
                           data-testid="input-instagram"
+                          autoComplete="off"
                           className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                         />
                       </FormControl>
@@ -170,9 +177,11 @@ export default function AdminRegister() {
                       <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">TikTok</FormLabel>
                       <FormControl>
                         <Input 
+                          id="tiktok"
                           placeholder="@yourusername" 
                           {...field} 
                           data-testid="input-tiktok"
+                          autoComplete="off"
                           className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                         />
                       </FormControl>
@@ -190,10 +199,12 @@ export default function AdminRegister() {
                     <FormLabel className="text-gray-900 dark:text-white transition-colors duration-300">Password *</FormLabel>
                     <FormControl>
                       <Input 
+                        id="password"
                         type="password" 
                         placeholder="••••••••" 
                         {...field} 
                         data-testid="input-password"
+                        autoComplete="new-password"
                         className="rounded-xl dark:bg-gray-700 dark:text-white dark:border-gray-600 transition-colors duration-300"
                       />
                     </FormControl>

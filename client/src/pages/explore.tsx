@@ -60,12 +60,15 @@ export default function Explore() {
             <div className="relative mb-6">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
+                id="therapy-search"
+                name="therapy-search"
                 type="search"
                 placeholder="Search therapies, guides, or locations..."
                 className="pl-10 bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 data-testid="input-search"
+                autoComplete="off"
               />
             </div>
 

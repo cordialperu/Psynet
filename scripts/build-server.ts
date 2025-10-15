@@ -1,8 +1,10 @@
 import { build } from "esbuild";
-import { rmSync } from "fs";
+import { rmSync, existsSync } from "fs";
 
-// Clean dist directory
-rmSync("dist", { recursive: true, force: true });
+// Only clean the server build file, not the entire dist directory
+if (existsSync("dist/index.js")) {
+  rmSync("dist/index.js", { force: true });
+}
 
 // Build server
 await build({
@@ -18,7 +20,12 @@ await build({
     "bcrypt",
     "drizzle-orm",
     "nanoid",
+    "lightningcss",
+    "@babel/*",
+    "vite",
+    "esbuild",
   ],
+  packages: "external",
   banner: {
     js: `
 import { createRequire } from 'module';

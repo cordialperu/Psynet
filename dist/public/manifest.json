@@ -1,0 +1,35 @@
+{
+  "name": "Psynet - Healing Experiences Marketplace",
+  "short_name": "Psynet",
+  "description": "Curated marketplace for authentic healing experiences and alternative therapies in Peru",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "lifestyle", "wellness"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Explore Therapies",
+      "short_name": "Explore",
+      "description": "Browse all available therapies",
+      "url": "/explore",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

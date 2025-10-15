@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { guides, therapies, adminSettings, type Guide, type Therapy, type InsertGuide, type InsertTherapy, type AdminSettings } from "@shared/schema";
 import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
+import { DEMO_THERAPIES, filterDemoTherapies } from "./demo-data";
 
 export interface IStorage {
   // Guide operations
@@ -142,10 +143,10 @@ export class DbStorage implements IStorage {
 
       return (result || []) as any[];
     } catch (error) {
-      console.error('Error fetching published therapies:', error);
-      // Return empty array instead of throwing to allow frontend to work
-      console.log('Returning empty array due to database error');
-      return [];
+      console.error('Error fetching published therapies from DB:', error);
+      // Fallback to demo data when database is unavailable
+      console.log('Using demo data as fallback');
+      return filterDemoTherapies(filters) as any[];
     }
   }
 

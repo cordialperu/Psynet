@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { queryPublishedTherapies, queryAllTherapies, queryGuideByEmail, createGuideDirectly, queryTherapyBySlug, updateTherapyDirectly } from "./db-direct";
+import { queryPublishedTherapies, queryAllTherapies, queryGuideByEmail, createGuideDirectly, queryTherapyBySlug, updateTherapyDirectly, queryAdminSettings } from "./db-direct";
 import { guides, therapies, adminSettings, type Guide, type Therapy, type InsertGuide, type InsertTherapy, type AdminSettings } from "@shared/schema";
 import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
 import { DEMO_THERAPIES, filterDemoTherapies } from "./demo-data";
@@ -224,8 +224,13 @@ export class DbStorage implements IStorage {
 
   // Admin settings operations
   async getAdminSettings(): Promise<AdminSettings | undefined> {
-    const [settings] = await db.select().from(adminSettings).limit(1);
-    return settings;
+    try {
+      const settings = await queryAdminSettings();
+      return settings as any;
+    } catch (error) {
+      console.error('Error fetching admin settings:', error);
+      return undefined;
+    }
   }
 
   async updateAdminSettings(data: { adminName: string; adminWhatsapp: string; adminWhatsappMexico?: string | null; paypalEmail?: string | null }): Promise<AdminSettings> {

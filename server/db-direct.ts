@@ -239,3 +239,19 @@ export async function updateTherapyDirectly(id: string, updates: Record<string, 
   
   throw new Error('Therapy not found or update failed');
 }
+
+export async function queryAdminSettings() {
+  const query = 'SELECT * FROM admin_settings LIMIT 1';
+  
+  console.log('⚙️ Fetching admin settings...');
+  
+  const result = await pool.query(query);
+  
+  if (result.rows.length > 0) {
+    console.log('✅ Admin settings found');
+    return result.rows[0];
+  }
+  
+  console.log('⚠️ No admin settings found');
+  return null;
+}

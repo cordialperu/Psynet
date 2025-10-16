@@ -948,14 +948,26 @@ async function registerRoutes(app2) {
   app2.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
+      console.log("\u{1F510} Login attempt for:", email);
       const guide = await storage.getGuideByEmail(email);
-      if (!guide || !await verifyPassword(password, guide.passwordHash)) {
+      if (!guide) {
+        console.log("\u274C Guide not found");
         return res.status(401).json({ message: "Invalid email or password" });
       }
+      console.log("\u2705 Guide found:", guide.fullName);
+      console.log("\u{1F511} Checking password...");
+      const isValidPassword = await verifyPassword(password, guide.passwordHash);
+      if (!isValidPassword) {
+        console.log("\u274C Invalid password");
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      console.log("\u2705 Password valid, creating session...");
       const sessionId = createSession(guide.id, guide.email);
+      console.log("\u2705 Session created:", sessionId);
       const { passwordHash, ...guideWithoutPassword } = guide;
       res.json({ sessionId, guide: guideWithoutPassword });
     } catch (error) {
+      console.error("\u274C Login error:", error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Login failed" });
     }
   });

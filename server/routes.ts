@@ -150,15 +150,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = req.body;
       
+      console.log('🔐 Login attempt for:', email);
+      
       const guide = await storage.getGuideByEmail(email);
-      if (!guide || !(await verifyPassword(password, guide.passwordHash))) {
+      
+      if (!guide) {
+        console.log('❌ Guide not found');
         return res.status(401).json({ message: "Invalid email or password" });
       }
-
+      
+      console.log('✅ Guide found:', guide.fullName);
+      console.log('🔑 Checking password...');
+      
+      const isValidPassword = await verifyPassword(password, guide.passwordHash);
+      
+      if (!isValidPassword) {
+        console.log('❌ Invalid password');
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      console.log('✅ Password valid, creating session...');
       const sessionId = createSession(guide.id, guide.email);
+      console.log('✅ Session created:', sessionId);
+      
       const { passwordHash, ...guideWithoutPassword } = guide;
       res.json({ sessionId, guide: guideWithoutPassword });
     } catch (error) {
+      console.error('❌ Login error:', error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Login failed" });
     }
   });

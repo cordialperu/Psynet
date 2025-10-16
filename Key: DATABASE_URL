@@ -1,0 +1,2 @@
+Key: DATABASE_URL
+Value: postgresql://neondb_owner:npg_CFmlMPLAz1p0@ep-round-river-adsros8v-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require

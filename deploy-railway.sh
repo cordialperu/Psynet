@@ -13,8 +13,8 @@ fi
 
 echo ""
 echo "🔐 Logging in to Railway..."
-echo "   (A browser window will open for authentication)"
-railway login
+echo "   (You'll get a link to paste in your browser)"
+railway login --browserless
 
 echo ""
 echo "🎯 Creating new Railway project..."

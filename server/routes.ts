@@ -47,6 +47,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API health check endpoint (for Render and monitoring)
+  app.get("/api/health", async (_req: Request, res: Response) => {
+    try {
+      // Check database connection
+      const therapies = await storage.getPublishedTherapies();
+      const dbStatus = therapies && therapies.length > 0 ? "connected" : "no data";
+      
+      res.json({
+        status: "ok",
+        database: dbStatus,
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || "development",
+        therapyCount: therapies?.length || 0
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "error",
+        database: "error",
+        message: error instanceof Error ? error.message : "Health check failed"
+      });
+    }
+  });
+
   // API version endpoint
   app.get("/api/version", (_req: Request, res: Response) => {
     res.json({ version: "1.0.0", api: "Psynet v1" });

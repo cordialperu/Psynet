@@ -103,6 +103,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Check videos endpoint
+  app.get("/api/debug/videos", async (_req: Request, res: Response) => {
+    try {
+      const allTherapies = await storage.getAllTherapies();
+      const therapiesWithVideos = allTherapies.filter(t => t.videoUrl && t.videoUrl.trim() !== '');
+      
+      res.json({
+        total: allTherapies.length,
+        withVideos: therapiesWithVideos.length,
+        withoutVideos: allTherapies.length - therapiesWithVideos.length,
+        samples: therapiesWithVideos.slice(0, 10).map(t => ({
+          title: t.title,
+          videoUrl: t.videoUrl,
+          category: t.category,
+          country: t.country
+        }))
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
   
   // Auth routes
   app.post("/api/auth/register", async (req: Request, res: Response) => {

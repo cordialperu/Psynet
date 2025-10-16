@@ -1,8 +1,24 @@
-import { db } from "./db";
-import { queryPublishedTherapies, queryAllTherapies, queryGuideByEmail, createGuideDirectly, queryTherapyBySlug, updateTherapyDirectly, queryAdminSettings } from "./db-direct";
-import { guides, therapies, adminSettings, type Guide, type Therapy, type InsertGuide, type InsertTherapy, type AdminSettings } from "@shared/schema";
-import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
-import { DEMO_THERAPIES, filterDemoTherapies } from "./demo-data";
+import {
+  queryPublishedTherapies,
+  queryAllTherapies,
+  queryGuideByEmail,
+  createGuideDirectly,
+  queryTherapyBySlug,
+  updateTherapyDirectly,
+  queryAdminSettings,
+  queryTherapyById,
+  queryTherapiesByGuideId,
+  createTherapyDirectly,
+  deleteTherapyDirectly,
+  queryGuideById,
+  queryAllGuides,
+  updateGuideDirectly,
+  queryFeaturedTherapies,
+  updateAdminSettingsDirectly,
+  createAdminSettingsDirectly,
+} from './db-direct';
+import { type Guide, type Therapy, type InsertGuide, type InsertTherapy, type AdminSettings } from "@shared/schema";
+import { filterDemoTherapies } from "./demo-data";
 
 export interface IStorage {
   // Guide operations
@@ -31,8 +47,13 @@ export interface IStorage {
 export class DbStorage implements IStorage {
   // Guide operations
   async getGuide(id: string): Promise<Guide | undefined> {
-    const [guide] = await db.select().from(guides).where(eq(guides.id, id));
-    return guide;
+    try {
+      const guide = await queryGuideById(id);
+      return guide as any;
+    } catch (error) {
+      console.error('Error fetching guide:', error);
+      return undefined;
+    }
   }
 
   async getGuideByEmail(email: string): Promise<Guide | undefined> {
@@ -113,22 +134,34 @@ export class DbStorage implements IStorage {
   }
 
   async getAllGuides(): Promise<Guide[]> {
-    return await db.select().from(guides).orderBy(sql`${guides.createdAt} DESC`);
+    try {
+      const guides = await queryAllGuides();
+      return guides as any[];
+    } catch (error) {
+      console.error('Error fetching all guides:', error);
+      return [];
+    }
   }
 
   async updateGuide(id: string, updateData: Partial<InsertGuide>): Promise<Guide> {
-    const [guide] = await db
-      .update(guides)
-      .set({ ...updateData, updatedAt: sql`NOW()` })
-      .where(eq(guides.id, id))
-      .returning();
-    return guide;
+    try {
+      const guide = await updateGuideDirectly(id, updateData);
+      return guide as any;
+    } catch (error) {
+      console.error('Error updating guide:', error);
+      throw error;
+    }
   }
 
   // Therapy operations
   async getTherapy(id: string): Promise<Therapy | undefined> {
-    const [therapy] = await db.select().from(therapies).where(eq(therapies.id, id));
-    return therapy;
+    try {
+      const therapy = await queryTherapyById(id);
+      return therapy as any;
+    } catch (error) {
+      console.error('Error fetching therapy:', error);
+      return undefined;
+    }
   }
 
   async getTherapyBySlug(slug: string): Promise<Therapy | undefined> {
@@ -145,7 +178,13 @@ export class DbStorage implements IStorage {
   }
 
   async getTherapiesByGuideId(guideId: string): Promise<Therapy[]> {
-    return await db.select().from(therapies).where(eq(therapies.guideId, guideId)).orderBy(desc(therapies.updatedAt));
+    try {
+      const therapies = await queryTherapiesByGuideId(guideId);
+      return therapies as any[];
+    } catch (error) {
+      console.error('Error fetching therapies by guide:', error);
+      return [];
+    }
   }
 
   async getAllTherapies(filters?: { type?: string; location?: string; search?: string; guideId?: string; country?: string }): Promise<Therapy[]> {
@@ -194,17 +233,23 @@ export class DbStorage implements IStorage {
   }
 
   async getFeaturedTherapies(limit: number = 6): Promise<Therapy[]> {
-    return await db
-      .select()
-      .from(therapies)
-      .where(eq(therapies.published, true))
-      .orderBy(desc(therapies.updatedAt))
-      .limit(limit);
+    try {
+      const therapies = await queryFeaturedTherapies(limit);
+      return therapies as any[];
+    } catch (error) {
+      console.error('Error fetching featured therapies:', error);
+      return [];
+    }
   }
 
   async createTherapy(insertTherapy: InsertTherapy): Promise<Therapy> {
-    const [therapy] = await db.insert(therapies).values(insertTherapy).returning();
-    return therapy;
+    try {
+      const therapy = await createTherapyDirectly(insertTherapy as any);
+      return therapy as any;
+    } catch (error) {
+      console.error('Error creating therapy:', error);
+      throw error;
+    }
   }
 
   async updateTherapy(id: string, updateData: Partial<InsertTherapy>): Promise<Therapy> {
@@ -219,7 +264,12 @@ export class DbStorage implements IStorage {
   }
 
   async deleteTherapy(id: string): Promise<void> {
-    await db.delete(therapies).where(eq(therapies.id, id));
+    try {
+      await deleteTherapyDirectly(id);
+    } catch (error) {
+      console.error('Error deleting therapy:', error);
+      throw error;
+    }
   }
 
   // Admin settings operations
@@ -234,21 +284,22 @@ export class DbStorage implements IStorage {
   }
 
   async updateAdminSettings(data: { adminName: string; adminWhatsapp: string; adminWhatsappMexico?: string | null; paypalEmail?: string | null }): Promise<AdminSettings> {
-    // Get existing settings
-    const existing = await this.getAdminSettings();
-    
-    if (existing) {
-      // Update existing
-      const [updated] = await db
-        .update(adminSettings)
-        .set({ ...data, updatedAt: sql`NOW()` })
-        .where(eq(adminSettings.id, existing.id))
-        .returning();
-      return updated;
-    } else {
-      // Create new
-      const [created] = await db.insert(adminSettings).values(data).returning();
-      return created;
+    try {
+      // Get existing settings
+      const existing = await this.getAdminSettings();
+      
+      if (existing) {
+        // Update existing
+        const updated = await updateAdminSettingsDirectly(existing.id, data);
+        return updated as any;
+      } else {
+        // Create new
+        const created = await createAdminSettingsDirectly(data);
+        return created as any;
+      }
+    } catch (error) {
+      console.error('Error updating admin settings:', error);
+      throw error;
     }
   }
 }

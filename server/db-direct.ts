@@ -255,3 +255,201 @@ export async function queryAdminSettings() {
   console.log('⚠️ No admin settings found');
   return null;
 }
+
+// ==================== THERAPY QUERIES ====================
+
+export async function queryTherapyById(id: string) {
+  const query = 'SELECT * FROM therapies WHERE id = $1 LIMIT 1';
+  console.log('🔍 Looking for therapy with id:', id);
+  const result = await pool.query(query, [id]);
+  if (result.rows.length > 0) {
+    console.log('✅ Therapy found:', result.rows[0].title);
+    return result.rows[0];
+  }
+  console.log('⚠️ No therapy found with that id');
+  return null;
+}
+
+export async function queryTherapiesByGuideId(guideId: string) {
+  const query = 'SELECT * FROM therapies WHERE guide_id = $1 ORDER BY updated_at DESC';
+  console.log('🔍 Looking for therapies by guide:', guideId);
+  const result = await pool.query(query, [guideId]);
+  console.log(`✅ Found ${result.rows.length} therapies for guide`);
+  return result.rows;
+}
+
+export async function createTherapyDirectly(therapyData: any) {
+  const query = `
+    INSERT INTO therapies (
+      guide_id, guide_name, guide_photo_url, country, category, title, slug,
+      description, type, duration, price, currency, location, language,
+      is_published, approval_status, video_url, created_at, updated_at
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW()
+    ) RETURNING *
+  `;
+  
+  console.log('📝 Creating therapy:', therapyData.title);
+  
+  const result = await pool.query(query, [
+    therapyData.guideId,
+    therapyData.guideName,
+    therapyData.guidePhotoUrl || null,
+    therapyData.country,
+    therapyData.category || 'ceremonias',
+    therapyData.title,
+    therapyData.slug,
+    therapyData.description || null,
+    therapyData.type,
+    therapyData.duration || null,
+    therapyData.price || null,
+    therapyData.currency || 'USD',
+    therapyData.location || null,
+    therapyData.language || 'es',
+    therapyData.published || false,
+    therapyData.approvalStatus || 'pending',
+    therapyData.videoUrl || null
+  ]);
+  
+  if (result.rows.length > 0) {
+    console.log('✅ Therapy created successfully:', result.rows[0].title);
+    return result.rows[0];
+  }
+  
+  throw new Error('Failed to create therapy');
+}
+
+export async function deleteTherapyDirectly(id: string) {
+  const query = 'DELETE FROM therapies WHERE id = $1';
+  console.log('🗑️ Deleting therapy:', id);
+  await pool.query(query, [id]);
+  console.log('✅ Therapy deleted successfully');
+}
+
+// ==================== GUIDE QUERIES ====================
+
+export async function queryGuideById(id: string) {
+  const query = 'SELECT * FROM guides WHERE id = $1 LIMIT 1';
+  console.log('🔍 Looking for guide with id:', id);
+  const result = await pool.query(query, [id]);
+  if (result.rows.length > 0) {
+    console.log('✅ Guide found:', result.rows[0].full_name);
+    return result.rows[0];
+  }
+  console.log('⚠️ No guide found with that id');
+  return null;
+}
+
+export async function queryAllGuides() {
+  const query = 'SELECT * FROM guides ORDER BY created_at DESC';
+  console.log('🔍 Fetching all guides...');
+  const result = await pool.query(query);
+  console.log(`✅ Found ${result.rows.length} guides`);
+  return result.rows;
+}
+
+export async function updateGuideDirectly(id: string, updates: Record<string, any>) {
+  console.log('📝 Updating guide:', id);
+  
+  const fields: string[] = [];
+  const values: any[] = [];
+  let paramIndex = 1;
+  
+  const fieldMap: Record<string, string> = {
+    fullName: 'full_name',
+    profilePhotoUrl: 'profile_photo_url',
+    presentationVideoUrl: 'presentation_video_url',
+    primarySpecialty: 'primary_specialty',
+    verificationStatus: 'verification_status',
+    verificationDocuments: 'verification_documents',
+    verificationNotes: 'verification_notes',
+    activeTherapies: 'active_therapies',
+  };
+  
+  for (const [key, value] of Object.entries(updates)) {
+    const dbField = fieldMap[key] || key;
+    fields.push(`${dbField} = $${paramIndex}`);
+    values.push(value);
+    paramIndex++;
+  }
+  
+  fields.push(`updated_at = NOW()`);
+  values.push(id);
+  
+  const query = `
+    UPDATE guides 
+    SET ${fields.join(', ')}
+    WHERE id = $${paramIndex}
+    RETURNING *
+  `;
+  
+  const result = await pool.query(query, values);
+  
+  if (result.rows.length > 0) {
+    console.log('✅ Guide updated successfully:', result.rows[0].full_name);
+    return result.rows[0];
+  }
+  
+  throw new Error('Guide not found or update failed');
+}
+
+export async function queryFeaturedTherapies(limit: number = 6) {
+  const query = `
+    SELECT * FROM therapies 
+    WHERE is_published = true 
+    ORDER BY created_at DESC 
+    LIMIT $1
+  `;
+  console.log('🔍 Fetching featured therapies, limit:', limit);
+  const result = await pool.query(query, [limit]);
+  console.log(`✅ Found ${result.rows.length} featured therapies`);
+  return result.rows;
+}
+
+// ==================== ADMIN SETTINGS ====================
+
+export async function updateAdminSettingsDirectly(id: string, data: Record<string, any>) {
+  const query = `
+    UPDATE admin_settings 
+    SET admin_name = $1, admin_whatsapp = $2, admin_whatsapp_mexico = $3, paypal_email = $4, updated_at = NOW()
+    WHERE id = $5
+    RETURNING *
+  `;
+  console.log('⚙️ Updating admin settings...');
+  const result = await pool.query(query, [
+    data.adminName,
+    data.adminWhatsapp,
+    data.adminWhatsappMexico || null,
+    data.paypalEmail || null,
+    id
+  ]);
+  
+  if (result.rows.length > 0) {
+    console.log('✅ Admin settings updated');
+    return result.rows[0];
+  }
+  
+  throw new Error('Admin settings not found');
+}
+
+export async function createAdminSettingsDirectly(data: Record<string, any>) {
+  const query = `
+    INSERT INTO admin_settings (admin_name, admin_whatsapp, admin_whatsapp_mexico, paypal_email, created_at, updated_at)
+    VALUES ($1, $2, $3, $4, NOW(), NOW())
+    RETURNING *
+  `;
+  console.log('⚙️ Creating admin settings...');
+  const result = await pool.query(query, [
+    data.adminName,
+    data.adminWhatsapp,
+    data.adminWhatsappMexico || null,
+    data.paypalEmail || null
+  ]);
+  
+  if (result.rows.length > 0) {
+    console.log('✅ Admin settings created');
+    return result.rows[0];
+  }
+  
+  throw new Error('Failed to create admin settings');
+}

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { queryPublishedTherapies, queryAllTherapies, queryGuideByEmail, createGuideDirectly, queryTherapyBySlug } from "./db-direct";
+import { queryPublishedTherapies, queryAllTherapies, queryGuideByEmail, createGuideDirectly, queryTherapyBySlug, updateTherapyDirectly } from "./db-direct";
 import { guides, therapies, adminSettings, type Guide, type Therapy, type InsertGuide, type InsertTherapy, type AdminSettings } from "@shared/schema";
 import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
 import { DEMO_THERAPIES, filterDemoTherapies } from "./demo-data";
@@ -208,12 +208,14 @@ export class DbStorage implements IStorage {
   }
 
   async updateTherapy(id: string, updateData: Partial<InsertTherapy>): Promise<Therapy> {
-    const [therapy] = await db
-      .update(therapies)
-      .set({ ...updateData, updatedAt: sql`NOW()` })
-      .where(eq(therapies.id, id))
-      .returning();
-    return therapy;
+    try {
+      console.log('📝 Updating therapy via direct query...');
+      const therapy = await updateTherapyDirectly(id, updateData);
+      return therapy as any;
+    } catch (error) {
+      console.error('Error updating therapy:', error);
+      throw error;
+    }
   }
 
   async deleteTherapy(id: string): Promise<void> {

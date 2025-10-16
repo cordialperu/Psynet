@@ -186,3 +186,56 @@ export async function queryTherapyBySlug(slug: string) {
   console.log('⚠️ No therapy found with that slug');
   return null;
 }
+
+export async function updateTherapyDirectly(id: string, updates: Record<string, any>) {
+  console.log('📝 Updating therapy:', id);
+  console.log('📝 Updates:', updates);
+  
+  // Construir la consulta UPDATE dinámicamente
+  const fields: string[] = [];
+  const values: any[] = [];
+  let paramIndex = 1;
+  
+  // Mapeo de campos camelCase a snake_case
+  const fieldMap: Record<string, string> = {
+    published: 'is_published',
+    approvalStatus: 'approval_status',
+    displayOrder: 'display_order',
+    inventory: 'inventory',
+    capacity: 'capacity',
+    bookedSlots: 'booked_slots',
+    // Agregar más campos según necesites
+  };
+  
+  for (const [key, value] of Object.entries(updates)) {
+    const dbField = fieldMap[key] || key;
+    fields.push(`${dbField} = $${paramIndex}`);
+    values.push(value);
+    paramIndex++;
+  }
+  
+  // Siempre actualizar updated_at
+  fields.push(`updated_at = NOW()`);
+  
+  // Agregar el ID al final
+  values.push(id);
+  
+  const query = `
+    UPDATE therapies 
+    SET ${fields.join(', ')}
+    WHERE id = $${paramIndex}
+    RETURNING *
+  `;
+  
+  console.log('🔍 Update query:', query);
+  console.log('🔍 Values:', values);
+  
+  const result = await pool.query(query, values);
+  
+  if (result.rows.length > 0) {
+    console.log('✅ Therapy updated successfully:', result.rows[0].title);
+    return result.rows[0];
+  }
+  
+  throw new Error('Therapy not found or update failed');
+}

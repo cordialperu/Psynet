@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { queryPublishedTherapies, queryAllTherapies, queryGuideByEmail, createGuideDirectly } from "./db-direct";
+import { queryPublishedTherapies, queryAllTherapies, queryGuideByEmail, createGuideDirectly, queryTherapyBySlug } from "./db-direct";
 import { guides, therapies, adminSettings, type Guide, type Therapy, type InsertGuide, type InsertTherapy, type AdminSettings } from "@shared/schema";
 import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
 import { DEMO_THERAPIES, filterDemoTherapies } from "./demo-data";
@@ -132,8 +132,16 @@ export class DbStorage implements IStorage {
   }
 
   async getTherapyBySlug(slug: string): Promise<Therapy | undefined> {
-    const [therapy] = await db.select().from(therapies).where(eq(therapies.slug, slug));
-    return therapy;
+    try {
+      const therapy = await queryTherapyBySlug(slug);
+      if (!therapy) return undefined;
+      
+      // Return as is (already compatible format from database)
+      return therapy as any;
+    } catch (error) {
+      console.error('Error fetching therapy by slug:', error);
+      return undefined;
+    }
   }
 
   async getTherapiesByGuideId(guideId: string): Promise<Therapy[]> {

@@ -170,3 +170,19 @@ export async function createGuideDirectly(guideData: {
   
   throw new Error('Failed to create guide');
 }
+
+export async function queryTherapyBySlug(slug: string) {
+  const query = 'SELECT * FROM therapies WHERE slug = $1 LIMIT 1';
+  
+  console.log('🔍 Looking for therapy with slug:', slug);
+  
+  const result = await pool.query(query, [slug]);
+  
+  if (result.rows.length > 0) {
+    console.log('✅ Therapy found:', result.rows[0].title);
+    return result.rows[0];
+  }
+  
+  console.log('⚠️ No therapy found with that slug');
+  return null;
+}

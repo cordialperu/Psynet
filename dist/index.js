@@ -382,6 +382,17 @@ async function createGuideDirectly(guideData) {
   }
   throw new Error("Failed to create guide");
 }
+async function queryTherapyBySlug(slug) {
+  const query = "SELECT * FROM therapies WHERE slug = $1 LIMIT 1";
+  console.log("\u{1F50D} Looking for therapy with slug:", slug);
+  const result = await pool.query(query, [slug]);
+  if (result.rows.length > 0) {
+    console.log("\u2705 Therapy found:", result.rows[0].title);
+    return result.rows[0];
+  }
+  console.log("\u26A0\uFE0F No therapy found with that slug");
+  return null;
+}
 
 // server/storage.ts
 import { eq, sql as sql3, desc } from "drizzle-orm";
@@ -637,8 +648,14 @@ var DbStorage = class {
     return therapy;
   }
   async getTherapyBySlug(slug) {
-    const [therapy] = await db.select().from(therapies).where(eq(therapies.slug, slug));
-    return therapy;
+    try {
+      const therapy = await queryTherapyBySlug(slug);
+      if (!therapy) return void 0;
+      return therapy;
+    } catch (error) {
+      console.error("Error fetching therapy by slug:", error);
+      return void 0;
+    }
   }
   async getTherapiesByGuideId(guideId) {
     return await db.select().from(therapies).where(eq(therapies.guideId, guideId)).orderBy(desc(therapies.updatedAt));

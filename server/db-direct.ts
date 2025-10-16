@@ -129,3 +129,44 @@ export async function queryGuideByEmail(email: string) {
   console.log('⚠️ No guide found with that email');
   return null;
 }
+
+export async function createGuideDirectly(guideData: {
+  fullName: string;
+  email: string;
+  whatsapp: string;
+  instagram?: string | null;
+  tiktok?: string | null;
+  passwordHash: string;
+}) {
+  const query = `
+    INSERT INTO guides (
+      full_name, 
+      email, 
+      whatsapp, 
+      instagram, 
+      tiktok, 
+      password_hash,
+      created_at,
+      updated_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+    RETURNING *
+  `;
+  
+  console.log('📝 Creating guide with email:', guideData.email);
+  
+  const result = await pool.query(query, [
+    guideData.fullName,
+    guideData.email,
+    guideData.whatsapp,
+    guideData.instagram || null,
+    guideData.tiktok || null,
+    guideData.passwordHash
+  ]);
+  
+  if (result.rows.length > 0) {
+    console.log('✅ Guide created successfully:', result.rows[0].full_name);
+    return result.rows[0];
+  }
+  
+  throw new Error('Failed to create guide');
+}

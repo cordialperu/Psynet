@@ -353,6 +353,35 @@ async function queryGuideByEmail(email) {
   console.log("\u26A0\uFE0F No guide found with that email");
   return null;
 }
+async function createGuideDirectly(guideData) {
+  const query = `
+    INSERT INTO guides (
+      full_name, 
+      email, 
+      whatsapp, 
+      instagram, 
+      tiktok, 
+      password_hash,
+      created_at,
+      updated_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+    RETURNING *
+  `;
+  console.log("\u{1F4DD} Creating guide with email:", guideData.email);
+  const result = await pool.query(query, [
+    guideData.fullName,
+    guideData.email,
+    guideData.whatsapp,
+    guideData.instagram || null,
+    guideData.tiktok || null,
+    guideData.passwordHash
+  ]);
+  if (result.rows.length > 0) {
+    console.log("\u2705 Guide created successfully:", result.rows[0].full_name);
+    return result.rows[0];
+  }
+  throw new Error("Failed to create guide");
+}
 
 // server/storage.ts
 import { eq, sql as sql3, desc } from "drizzle-orm";
@@ -557,12 +586,43 @@ var DbStorage = class {
     }
   }
   async createGuide(insertGuide) {
-    const { password, ...guideData } = insertGuide;
-    const [guide] = await db.insert(guides).values({
-      ...guideData,
-      passwordHash: insertGuide.passwordHash
-    }).returning();
-    return guide;
+    try {
+      console.log("\u{1F4DD} Creating guide using direct query...");
+      const guide = await createGuideDirectly({
+        fullName: insertGuide.fullName,
+        email: insertGuide.email,
+        whatsapp: insertGuide.whatsapp,
+        instagram: insertGuide.instagram || null,
+        tiktok: insertGuide.tiktok || null,
+        passwordHash: insertGuide.passwordHash
+      });
+      return {
+        id: guide.id,
+        fullName: guide.full_name,
+        email: guide.email,
+        whatsapp: guide.whatsapp,
+        instagram: guide.instagram,
+        tiktok: guide.tiktok,
+        passwordHash: guide.password_hash,
+        primarySpecialty: guide.primary_specialty,
+        bio: guide.bio,
+        profilePhotoUrl: guide.profile_photo_url,
+        presentationVideoUrl: guide.presentation_video_url,
+        activeTherapies: guide.active_therapies,
+        verified: guide.verified,
+        verificationDocuments: guide.verification_documents,
+        verificationStatus: guide.verification_status,
+        verificationNotes: guide.verification_notes,
+        passwordChangedAt: guide.password_changed_at,
+        failedLoginAttempts: guide.failed_login_attempts,
+        lockedUntil: guide.locked_until,
+        createdAt: guide.created_at,
+        updatedAt: guide.updated_at
+      };
+    } catch (error) {
+      console.error("Error creating guide:", error);
+      throw error;
+    }
   }
   async getAllGuides() {
     return await db.select().from(guides).orderBy(sql3`${guides.createdAt} DESC`);

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { queryPublishedTherapies, queryAllTherapies, queryGuideByEmail } from "./db-direct";
+import { queryPublishedTherapies, queryAllTherapies, queryGuideByEmail, createGuideDirectly } from "./db-direct";
 import { guides, therapies, adminSettings, type Guide, type Therapy, type InsertGuide, type InsertTherapy, type AdminSettings } from "@shared/schema";
 import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
 import { DEMO_THERAPIES, filterDemoTherapies } from "./demo-data";
@@ -71,13 +71,45 @@ export class DbStorage implements IStorage {
   }
 
   async createGuide(insertGuide: InsertGuide & { passwordHash: string }): Promise<Guide> {
-    // Remove password from the data before inserting (we only need passwordHash)
-    const { password, ...guideData } = insertGuide as any;
-    const [guide] = await db.insert(guides).values({
-      ...guideData,
-      passwordHash: insertGuide.passwordHash
-    }).returning();
-    return guide;
+    try {
+      console.log('📝 Creating guide using direct query...');
+      const guide = await createGuideDirectly({
+        fullName: insertGuide.fullName,
+        email: insertGuide.email,
+        whatsapp: insertGuide.whatsapp,
+        instagram: insertGuide.instagram || null,
+        tiktok: insertGuide.tiktok || null,
+        passwordHash: insertGuide.passwordHash
+      });
+      
+      // Convert snake_case to camelCase
+      return {
+        id: guide.id,
+        fullName: guide.full_name,
+        email: guide.email,
+        whatsapp: guide.whatsapp,
+        instagram: guide.instagram,
+        tiktok: guide.tiktok,
+        passwordHash: guide.password_hash,
+        primarySpecialty: guide.primary_specialty,
+        bio: guide.bio,
+        profilePhotoUrl: guide.profile_photo_url,
+        presentationVideoUrl: guide.presentation_video_url,
+        activeTherapies: guide.active_therapies,
+        verified: guide.verified,
+        verificationDocuments: guide.verification_documents,
+        verificationStatus: guide.verification_status,
+        verificationNotes: guide.verification_notes,
+        passwordChangedAt: guide.password_changed_at,
+        failedLoginAttempts: guide.failed_login_attempts,
+        lockedUntil: guide.locked_until,
+        createdAt: guide.created_at,
+        updatedAt: guide.updated_at
+      } as Guide;
+    } catch (error) {
+      console.error('Error creating guide:', error);
+      throw error;
+    }
   }
 
   async getAllGuides(): Promise<Guide[]> {

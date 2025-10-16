@@ -251,6 +251,58 @@ if (!process.env.DATABASE_URL) {
 var sql2 = neon(process.env.DATABASE_URL);
 var db = drizzle(sql2, { schema: schema_exports });
 
+// server/db-direct.ts
+import { Pool } from "pg";
+var DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set");
+}
+var pool = new Pool({
+  connectionString: DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  },
+  max: 20,
+  idleTimeoutMillis: 3e4,
+  connectionTimeoutMillis: 1e4
+});
+pool.on("connect", () => {
+  console.log("\u2705 PostgreSQL pool connected");
+});
+pool.on("error", (err) => {
+  console.error("\u274C PostgreSQL pool error:", err);
+});
+async function queryPublishedTherapies(filters) {
+  const conditions = ["is_published = true"];
+  const values = [];
+  let paramCount = 1;
+  if (filters?.country) {
+    conditions.push(`country = $${paramCount}`);
+    values.push(filters.country);
+    paramCount++;
+  }
+  if (filters?.type) {
+    conditions.push(`type = $${paramCount}`);
+    values.push(filters.type);
+    paramCount++;
+  }
+  if (filters?.category) {
+    conditions.push(`category = $${paramCount}`);
+    values.push(filters.category);
+    paramCount++;
+  }
+  const query = `
+    SELECT * FROM therapies 
+    WHERE ${conditions.join(" AND ")}
+    ORDER BY updated_at DESC
+  `;
+  console.log("\u{1F50D} Executing query:", query.substring(0, 100), "...");
+  console.log("\u{1F50D} With values:", values);
+  const result = await pool.query(query, values);
+  console.log(`\u2705 Found ${result.rows.length} therapies`);
+  return result.rows;
+}
+
 // server/storage.ts
 import { eq, and, ilike, or, sql as sql3, desc } from "drizzle-orm";
 
@@ -478,34 +530,15 @@ var DbStorage = class {
   }
   async getPublishedTherapies(filters) {
     try {
-      console.log("\u{1F50D} Fetching published therapies from database...");
-      const conditions = [eq(therapies.published, true)];
-      if (filters?.type) {
-        conditions.push(eq(therapies.type, filters.type));
-      }
-      if (filters?.location) {
-        conditions.push(ilike(therapies.location, `%${filters.location}%`));
-      }
-      if (filters?.country) {
-        conditions.push(eq(therapies.country, filters.country));
-      }
-      if (filters?.search) {
-        conditions.push(
-          or(
-            ilike(therapies.title, `%${filters.search}%`),
-            ilike(therapies.guideName, `%${filters.guideName}%`),
-            ilike(therapies.description, `%${filters.search}%`)
-          )
-        );
-      }
-      const result = await Promise.race([
-        db.select().from(therapies).where(and(...conditions)).orderBy(desc(therapies.updatedAt)),
-        new Promise(
-          (_, reject) => setTimeout(() => reject(new Error("Database query timeout after 30s")), 3e4)
-        )
-      ]);
+      console.log("\u{1F50D} Fetching published therapies using direct query...");
+      console.log("Filters:", JSON.stringify(filters));
+      const result = await queryPublishedTherapies({
+        country: filters?.country,
+        type: filters?.type,
+        category: filters?.location
+      });
       console.log(`\u2705 Found ${result.length} published therapies`);
-      return result || [];
+      return result;
     } catch (error) {
       console.error("\u274C Error fetching published therapies from DB:", error);
       console.error("DATABASE_URL configured:", !!process.env.DATABASE_URL);

@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { queryPublishedTherapies } from "./db-direct";
 import { guides, therapies, adminSettings, type Guide, type Therapy, type InsertGuide, type InsertTherapy, type AdminSettings } from "@shared/schema";
 import { eq, and, ilike, or, sql, desc } from "drizzle-orm";
 import { DEMO_THERAPIES, filterDemoTherapies } from "./demo-data";
@@ -110,41 +111,18 @@ export class DbStorage implements IStorage {
 
   async getPublishedTherapies(filters?: { type?: string; location?: string; search?: string; country?: string }): Promise<Therapy[]> {
     try {
-      console.log('🔍 Fetching published therapies from database...');
-      const conditions = [eq(therapies.published, true)];
+      console.log('🔍 Fetching published therapies using direct query...');
+      console.log('Filters:', JSON.stringify(filters));
+      
+      // Use direct PostgreSQL query to bypass Drizzle issues
+      const result = await queryPublishedTherapies({
+        country: filters?.country,
+        type: filters?.type,
+        category: filters?.location
+      });
 
-      if (filters?.type) {
-        conditions.push(eq(therapies.type, filters.type));
-      }
-
-      if (filters?.location) {
-        conditions.push(ilike(therapies.location, `%${filters.location}%`));
-      }
-
-      if (filters?.country) {
-        conditions.push(eq(therapies.country, filters.country));
-      }
-
-      if (filters?.search) {
-        conditions.push(
-          or(
-            ilike(therapies.title, `%${filters.search}%`),
-            ilike(therapies.guideName, `%${filters.guideName}%`),
-            ilike(therapies.description, `%${filters.search}%`)
-          )!
-        );
-      }
-
-      // Increase timeout to 30 seconds for slower connections
-      const result = await Promise.race([
-        db.select().from(therapies).where(and(...conditions)).orderBy(desc(therapies.updatedAt)),
-        new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Database query timeout after 30s')), 30000)
-        )
-      ]);
-
-      console.log(`✅ Found ${(result as any[]).length} published therapies`);
-      return (result || []) as any[];
+      console.log(`✅ Found ${result.length} published therapies`);
+      return result as any[];
     } catch (error) {
       console.error('❌ Error fetching published therapies from DB:', error);
       console.error('DATABASE_URL configured:', !!process.env.DATABASE_URL);

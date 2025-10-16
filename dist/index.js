@@ -478,6 +478,7 @@ var DbStorage = class {
   }
   async getPublishedTherapies(filters) {
     try {
+      console.log("\u{1F50D} Fetching published therapies from database...");
       const conditions = [eq(therapies.published, true)];
       if (filters?.type) {
         conditions.push(eq(therapies.type, filters.type));
@@ -492,7 +493,7 @@ var DbStorage = class {
         conditions.push(
           or(
             ilike(therapies.title, `%${filters.search}%`),
-            ilike(therapies.guideName, `%${filters.search}%`),
+            ilike(therapies.guideName, `%${filters.guideName}%`),
             ilike(therapies.description, `%${filters.search}%`)
           )
         );
@@ -500,13 +501,16 @@ var DbStorage = class {
       const result = await Promise.race([
         db.select().from(therapies).where(and(...conditions)).orderBy(desc(therapies.updatedAt)),
         new Promise(
-          (_, reject) => setTimeout(() => reject(new Error("Database query timeout")), 8e3)
+          (_, reject) => setTimeout(() => reject(new Error("Database query timeout after 30s")), 3e4)
         )
       ]);
+      console.log(`\u2705 Found ${result.length} published therapies`);
       return result || [];
     } catch (error) {
-      console.error("Error fetching published therapies from DB:", error);
-      console.log("Using demo data as fallback");
+      console.error("\u274C Error fetching published therapies from DB:", error);
+      console.error("DATABASE_URL configured:", !!process.env.DATABASE_URL);
+      console.error("Error details:", error instanceof Error ? error.message : "Unknown error");
+      console.log("\u26A0\uFE0F Using demo data as fallback");
       return filterDemoTherapies(filters);
     }
   }
@@ -697,8 +701,53 @@ async function registerRoutes(app2) {
       });
     }
   });
+  app2.get("/api/health", async (_req, res) => {
+    try {
+      const hasDbUrl = !!process.env.DATABASE_URL;
+      res.json({
+        status: "ok",
+        database: hasDbUrl ? "configured" : "not configured",
+        databaseUrl: hasDbUrl ? "present" : "missing",
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV || "development"
+      });
+    } catch (error) {
+      res.status(503).json({
+        status: "error",
+        database: "error",
+        message: error instanceof Error ? error.message : "Health check failed"
+      });
+    }
+  });
   app2.get("/api/version", (_req, res) => {
     res.json({ version: "1.0.0", api: "Psynet v1" });
+  });
+  app2.get("/api/debug/db", async (_req, res) => {
+    try {
+      console.log("\u{1F50D} Testing database connection...");
+      const therapies2 = await storage.getPublishedTherapies();
+      res.json({
+        status: "ok",
+        database: "connected",
+        therapyCount: therapies2.length,
+        sampleTherapies: therapies2.slice(0, 3).map((t) => ({
+          id: t.id,
+          title: t.title,
+          country: t.country,
+          category: t.category
+        })),
+        databaseUrl: process.env.DATABASE_URL ? "configured" : "missing"
+      });
+    } catch (error) {
+      console.error("\u274C Database test failed:", error);
+      res.status(500).json({
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : void 0,
+        databaseUrl: process.env.DATABASE_URL ? "configured" : "missing"
+      });
+    }
   });
   app2.post("/api/auth/register", async (req, res) => {
     try {
@@ -720,7 +769,10 @@ async function registerRoutes(app2) {
         whatsapp,
         instagram: instagram || null,
         tiktok: tiktok || null,
+        password,
+        // Pass the original password for the InsertGuide schema
         passwordHash
+        // Additional field for storage
       });
       res.json({ message: "Registration successful", guideId: guide.id });
     } catch (error) {
@@ -1061,7 +1113,7 @@ async function registerRoutes(app2) {
         return res.status(404).json({ message: "Therapy not found" });
       }
       const updatedTherapy = await storage.updateTherapy(req.params.id, {
-        approvalStatus: "approved",
+        approval: "approved",
         published: true
         // Auto-publicar cuando se aprueba
       });
@@ -1077,7 +1129,7 @@ async function registerRoutes(app2) {
         return res.status(404).json({ message: "Therapy not found" });
       }
       const updatedTherapy = await storage.updateTherapy(req.params.id, {
-        approvalStatus: "rejected",
+        approval: "rejected",
         published: false
       });
       res.json(updatedTherapy);
@@ -1085,7 +1137,7 @@ async function registerRoutes(app2) {
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to reject therapy" });
     }
   });
-  app2.get("/api/admin/master/guides", requireMasterAuth, async (req, res) => {
+  app2.get("/api/admin/master/guides", requireMasterAuth, async (_req, res) => {
     try {
       console.log("\u{1F535} GET /api/admin/master/guides - Fetching all guides");
       const guides2 = await storage.getAllGuides();
@@ -1096,7 +1148,7 @@ async function registerRoutes(app2) {
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch guides" });
     }
   });
-  app2.get("/api/admin/master/settings", requireMasterAuth, async (req, res) => {
+  app2.get("/api/admin/master/settings", requireMasterAuth, async (_req, res) => {
     try {
       const settings = await storage.getAdminSettings();
       res.json(settings);

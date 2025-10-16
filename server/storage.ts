@@ -110,6 +110,7 @@ export class DbStorage implements IStorage {
 
   async getPublishedTherapies(filters?: { type?: string; location?: string; search?: string; country?: string }): Promise<Therapy[]> {
     try {
+      console.log('🔍 Fetching published therapies from database...');
       const conditions = [eq(therapies.published, true)];
 
       if (filters?.type) {
@@ -128,24 +129,28 @@ export class DbStorage implements IStorage {
         conditions.push(
           or(
             ilike(therapies.title, `%${filters.search}%`),
-            ilike(therapies.guideName, `%${filters.search}%`),
+            ilike(therapies.guideName, `%${filters.guideName}%`),
             ilike(therapies.description, `%${filters.search}%`)
           )!
         );
       }
 
+      // Increase timeout to 30 seconds for slower connections
       const result = await Promise.race([
         db.select().from(therapies).where(and(...conditions)).orderBy(desc(therapies.updatedAt)),
         new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Database query timeout')), 8000)
+          setTimeout(() => reject(new Error('Database query timeout after 30s')), 30000)
         )
       ]);
 
+      console.log(`✅ Found ${(result as any[]).length} published therapies`);
       return (result || []) as any[];
     } catch (error) {
-      console.error('Error fetching published therapies from DB:', error);
+      console.error('❌ Error fetching published therapies from DB:', error);
+      console.error('DATABASE_URL configured:', !!process.env.DATABASE_URL);
+      console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
       // Fallback to demo data when database is unavailable
-      console.log('Using demo data as fallback');
+      console.log('⚠️ Using demo data as fallback');
       return filterDemoTherapies(filters) as any[];
     }
   }

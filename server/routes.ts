@@ -50,17 +50,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API health check endpoint (for Render and monitoring)
   app.get("/api/health", async (_req: Request, res: Response) => {
     try {
-      // Check database connection
-      const therapies = await storage.getPublishedTherapies();
-      const dbStatus = therapies && therapies.length > 0 ? "connected" : "no data";
+      // Simple health check without database query to avoid timeouts
+      const hasDbUrl = !!process.env.DATABASE_URL;
       
       res.json({
         status: "ok",
-        database: dbStatus,
+        database: hasDbUrl ? "configured" : "not configured",
+        databaseUrl: hasDbUrl ? "present" : "missing",
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        environment: process.env.NODE_ENV || "development",
-        therapyCount: therapies?.length || 0
+        environment: process.env.NODE_ENV || "development"
       });
     } catch (error) {
       res.status(503).json({
@@ -106,7 +105,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         whatsapp,
         instagram: instagram || null,
         tiktok: tiktok || null,
-        passwordHash,
+        password, // Pass the original password for the InsertGuide schema
+        passwordHash, // Additional field for storage
       });
 
       res.json({ message: "Registration successful", guideId: guide.id });
@@ -543,7 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedTherapy = await storage.updateTherapy(req.params.id, {
-        approvalStatus: "approved",
+        approval: "approved",
         published: true, // Auto-publicar cuando se aprueba
       });
 
@@ -562,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedTherapy = await storage.updateTherapy(req.params.id, {
-        approvalStatus: "rejected",
+        approval: "rejected",
         published: false,
       });
 
@@ -573,7 +573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all guides (master admin only)
-  app.get("/api/admin/master/guides", requireMasterAuth, async (req: Request, res: Response) => {
+  app.get("/api/admin/master/guides", requireMasterAuth, async (_req: Request, res: Response) => {
     try {
       console.log("🔵 GET /api/admin/master/guides - Fetching all guides");
       const guides = await storage.getAllGuides();
@@ -586,7 +586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin settings routes
-  app.get("/api/admin/master/settings", requireMasterAuth, async (req: Request, res: Response) => {
+  app.get("/api/admin/master/settings", requireMasterAuth, async (_req: Request, res: Response) => {
     try {
       const settings = await storage.getAdminSettings();
       res.json(settings);

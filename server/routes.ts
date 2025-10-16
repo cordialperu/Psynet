@@ -216,6 +216,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/me", requireAuth, async (req: Request, res: Response) => {
     try {
       const session = (req as any).session;
+      
+      // Si es master, devolver perfil master
+      if (session.isMaster) {
+        return res.json({
+          id: "master",
+          email: session.email || "master@psycheconecta.com",
+          fullName: "Super Administrador",
+          isMaster: true
+        });
+      }
+      
       const guide = await storage.getGuide(session.guideId);
       
       if (!guide) {

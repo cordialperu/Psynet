@@ -5,7 +5,7 @@
   "description": "Curated marketplace for authentic healing experiences and alternative therapies in Peru",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "node --loader tsx/esm server/index.ts",
+    "dev": "tsx server/index.ts",
     "build": "vite build && npm run build:server",
     "build:server": "tsx scripts/build-server.ts",
     "start": "node dist/index.js",

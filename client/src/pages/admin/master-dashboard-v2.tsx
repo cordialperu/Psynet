@@ -183,17 +183,17 @@ export default function MasterDashboardV2() {
     
     switch (category) {
       case 'ceremonias':
-        return <Badge className="bg-purple-500 hover:bg-purple-600 text-white">{categoryName}</Badge>;
+        return <Badge className="bg-purple-400 hover:bg-purple-500 text-white dark:bg-purple-500 dark:hover:bg-purple-600">{categoryName}</Badge>;
       case 'terapias':
-        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white">{categoryName}</Badge>;
+        return <Badge className="bg-blue-400 hover:bg-blue-500 text-white dark:bg-blue-500 dark:hover:bg-blue-600">{categoryName}</Badge>;
       case 'microdosis':
-        return <Badge className="bg-pink-500 hover:bg-pink-600 text-white">{categoryName}</Badge>;
+        return <Badge className="bg-green-400 hover:bg-green-500 text-white dark:bg-green-500 dark:hover:bg-green-600">{categoryName}</Badge>;
       case 'medicina':
-        return <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white">{categoryName}</Badge>;
+        return <Badge className="bg-amber-400 hover:bg-amber-500 text-white dark:bg-amber-500 dark:hover:bg-amber-600">{categoryName}</Badge>;
       case 'eventos':
-        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white">{categoryName}</Badge>;
+        return <Badge className="bg-pink-400 hover:bg-pink-500 text-white dark:bg-pink-500 dark:hover:bg-pink-600">{categoryName}</Badge>;
       case 'productos':
-        return <Badge className="bg-cyan-500 hover:bg-cyan-600 text-white">{categoryName}</Badge>;
+        return <Badge className="bg-cyan-400 hover:bg-cyan-500 text-white dark:bg-cyan-500 dark:hover:bg-cyan-600">{categoryName}</Badge>;
       default:
         return <Badge variant="secondary">{categoryName}</Badge>;
     }

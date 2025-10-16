@@ -74,6 +74,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/version", (_req: Request, res: Response) => {
     res.json({ version: "1.0.0", api: "Psynet v1" });
   });
+
+  // Database diagnostic endpoint
+  app.get("/api/debug/db", async (_req: Request, res: Response) => {
+    try {
+      console.log('🔍 Testing database connection...');
+      const therapies = await storage.getPublishedTherapies();
+      
+      res.json({
+        status: "ok",
+        database: "connected",
+        therapyCount: therapies.length,
+        sampleTherapies: therapies.slice(0, 3).map(t => ({
+          id: t.id,
+          title: t.title,
+          country: t.country,
+          category: t.category
+        })),
+        databaseUrl: process.env.DATABASE_URL ? "configured" : "missing"
+      });
+    } catch (error) {
+      console.error('❌ Database test failed:', error);
+      res.status(500).json({
+        status: "error",
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+        databaseUrl: process.env.DATABASE_URL ? "configured" : "missing"
+      });
+    }
+  });
   
   // Auth routes
   app.post("/api/auth/register", async (req: Request, res: Response) => {

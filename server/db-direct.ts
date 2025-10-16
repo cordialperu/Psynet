@@ -113,3 +113,19 @@ export async function queryAllTherapies(filters?: { country?: string; type?: str
   
   return result.rows;
 }
+
+export async function queryGuideByEmail(email: string) {
+  const query = 'SELECT * FROM guides WHERE email = $1 LIMIT 1';
+  
+  console.log('🔍 Looking for guide with email:', email);
+  
+  const result = await pool.query(query, [email]);
+  
+  if (result.rows.length > 0) {
+    console.log('✅ Guide found:', result.rows[0].full_name);
+    return result.rows[0];
+  }
+  
+  console.log('⚠️ No guide found with that email');
+  return null;
+}

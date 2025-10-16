@@ -342,6 +342,17 @@ async function queryAllTherapies(filters) {
   console.log(`\u2705 Found ${result.rows.length} therapies for admin`);
   return result.rows;
 }
+async function queryGuideByEmail(email) {
+  const query = "SELECT * FROM guides WHERE email = $1 LIMIT 1";
+  console.log("\u{1F50D} Looking for guide with email:", email);
+  const result = await pool.query(query, [email]);
+  if (result.rows.length > 0) {
+    console.log("\u2705 Guide found:", result.rows[0].full_name);
+    return result.rows[0];
+  }
+  console.log("\u26A0\uFE0F No guide found with that email");
+  return null;
+}
 
 // server/storage.ts
 import { eq, sql as sql3, desc } from "drizzle-orm";
@@ -514,8 +525,36 @@ var DbStorage = class {
     return guide;
   }
   async getGuideByEmail(email) {
-    const [guide] = await db.select().from(guides).where(eq(guides.email, email));
-    return guide;
+    try {
+      const guide = await queryGuideByEmail(email);
+      if (!guide) return void 0;
+      return {
+        id: guide.id,
+        fullName: guide.full_name,
+        email: guide.email,
+        whatsapp: guide.whatsapp,
+        instagram: guide.instagram,
+        tiktok: guide.tiktok,
+        passwordHash: guide.password_hash,
+        primarySpecialty: guide.primary_specialty,
+        bio: guide.bio,
+        profilePhotoUrl: guide.profile_photo_url,
+        presentationVideoUrl: guide.presentation_video_url,
+        activeTherapies: guide.active_therapies,
+        verified: guide.verified,
+        verificationDocuments: guide.verification_documents,
+        verificationStatus: guide.verification_status,
+        verificationNotes: guide.verification_notes,
+        passwordChangedAt: guide.password_changed_at,
+        failedLoginAttempts: guide.failed_login_attempts,
+        lockedUntil: guide.locked_until,
+        createdAt: guide.created_at,
+        updatedAt: guide.updated_at
+      };
+    } catch (error) {
+      console.error("Error fetching guide by email:", error);
+      return void 0;
+    }
   }
   async createGuide(insertGuide) {
     const { password, ...guideData } = insertGuide;

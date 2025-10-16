@@ -41,7 +41,12 @@ export class DbStorage implements IStorage {
   }
 
   async createGuide(insertGuide: InsertGuide & { passwordHash: string }): Promise<Guide> {
-    const [guide] = await db.insert(guides).values(insertGuide).returning();
+    // Remove password from the data before inserting (we only need passwordHash)
+    const { password, ...guideData } = insertGuide as any;
+    const [guide] = await db.insert(guides).values({
+      ...guideData,
+      passwordHash: insertGuide.passwordHash
+    }).returning();
     return guide;
   }
 

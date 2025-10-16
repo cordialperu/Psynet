@@ -128,18 +128,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create guide with hashed password
       const passwordHash = await hashPassword(password);
       
+      // Pass all required fields including passwordHash
       const guide = await storage.createGuide({
         fullName,
         email,
         whatsapp,
+        password, // Required by InsertGuide schema
         instagram: instagram || null,
         tiktok: tiktok || null,
-        password, // Pass the original password for the InsertGuide schema
-        passwordHash, // Additional field for storage
-      });
+        passwordHash, // Additional field for actual storage
+      } as any);
 
       res.json({ message: "Registration successful", guideId: guide.id });
     } catch (error) {
+      console.error('Registration error:', error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Registration failed" });
     }
   });

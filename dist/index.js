@@ -478,7 +478,11 @@ var DbStorage = class {
     return guide;
   }
   async createGuide(insertGuide) {
-    const [guide] = await db.insert(guides).values(insertGuide).returning();
+    const { password, ...guideData } = insertGuide;
+    const [guide] = await db.insert(guides).values({
+      ...guideData,
+      passwordHash: insertGuide.passwordHash
+    }).returning();
     return guide;
   }
   async getAllGuides() {
@@ -800,15 +804,16 @@ async function registerRoutes(app2) {
         fullName,
         email,
         whatsapp,
+        password,
+        // Required by InsertGuide schema
         instagram: instagram || null,
         tiktok: tiktok || null,
-        password,
-        // Pass the original password for the InsertGuide schema
         passwordHash
-        // Additional field for storage
+        // Additional field for actual storage
       });
       res.json({ message: "Registration successful", guideId: guide.id });
     } catch (error) {
+      console.error("Registration error:", error);
       res.status(500).json({ message: error instanceof Error ? error.message : "Registration failed" });
     }
   });

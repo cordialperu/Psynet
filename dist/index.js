@@ -302,9 +302,49 @@ async function queryPublishedTherapies(filters) {
   console.log(`\u2705 Found ${result.rows.length} therapies`);
   return result.rows;
 }
+async function queryAllTherapies(filters) {
+  const conditions = [];
+  const values = [];
+  let paramCount = 1;
+  if (filters?.country) {
+    conditions.push(`country = $${paramCount}`);
+    values.push(filters.country);
+    paramCount++;
+  }
+  if (filters?.type) {
+    conditions.push(`type = $${paramCount}`);
+    values.push(filters.type);
+    paramCount++;
+  }
+  if (filters?.guideId) {
+    conditions.push(`guide_id = $${paramCount}`);
+    values.push(filters.guideId);
+    paramCount++;
+  }
+  if (filters?.search) {
+    conditions.push(`(
+      title ILIKE $${paramCount} OR 
+      guide_name ILIKE $${paramCount} OR 
+      description ILIKE $${paramCount}
+    )`);
+    values.push(`%${filters.search}%`);
+    paramCount++;
+  }
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+  const query = `
+    SELECT * FROM therapies 
+    ${whereClause}
+    ORDER BY updated_at DESC
+  `;
+  console.log("\u{1F50D} Executing ALL therapies query:", query.substring(0, 100), "...");
+  console.log("\u{1F50D} With values:", values);
+  const result = await pool.query(query, values);
+  console.log(`\u2705 Found ${result.rows.length} therapies for admin`);
+  return result.rows;
+}
 
 // server/storage.ts
-import { eq, and, ilike, or, sql as sql3, desc } from "drizzle-orm";
+import { eq, sql as sql3, desc } from "drizzle-orm";
 
 // server/demo-data.ts
 var DEMO_THERAPIES = [
@@ -505,32 +545,21 @@ var DbStorage = class {
     return await db.select().from(therapies).where(eq(therapies.guideId, guideId)).orderBy(desc(therapies.updatedAt));
   }
   async getAllTherapies(filters) {
-    const conditions = [];
-    if (filters?.type) {
-      conditions.push(eq(therapies.type, filters.type));
+    try {
+      console.log("\u{1F50D} Fetching ALL therapies for admin using direct query...");
+      console.log("Filters:", JSON.stringify(filters));
+      const result = await queryAllTherapies({
+        country: filters?.country,
+        type: filters?.type,
+        guideId: filters?.guideId,
+        search: filters?.search
+      });
+      console.log(`\u2705 Found ${result.length} therapies for admin`);
+      return result;
+    } catch (error) {
+      console.error("\u274C Error fetching all therapies:", error);
+      return [];
     }
-    if (filters?.location) {
-      conditions.push(ilike(therapies.location, `%${filters.location}%`));
-    }
-    if (filters?.guideId) {
-      conditions.push(eq(therapies.guideId, filters.guideId));
-    }
-    if (filters?.country) {
-      conditions.push(eq(therapies.country, filters.country));
-    }
-    if (filters?.search) {
-      conditions.push(
-        or(
-          ilike(therapies.title, `%${filters.search}%`),
-          ilike(therapies.guideName, `%${filters.search}%`),
-          ilike(therapies.description, `%${filters.search}%`)
-        )
-      );
-    }
-    if (conditions.length > 0) {
-      return await db.select().from(therapies).where(and(...conditions)).orderBy(desc(therapies.updatedAt));
-    }
-    return await db.select().from(therapies).orderBy(desc(therapies.updatedAt));
   }
   async getPublishedTherapies(filters) {
     try {

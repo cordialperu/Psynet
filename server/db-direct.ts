@@ -63,3 +63,53 @@ export async function queryPublishedTherapies(filters?: { country?: string; type
   
   return result.rows;
 }
+
+export async function queryAllTherapies(filters?: { country?: string; type?: string; guideId?: string; search?: string }) {
+  const conditions: string[] = [];
+  const values: any[] = [];
+  let paramCount = 1;
+
+  if (filters?.country) {
+    conditions.push(`country = $${paramCount}`);
+    values.push(filters.country);
+    paramCount++;
+  }
+
+  if (filters?.type) {
+    conditions.push(`type = $${paramCount}`);
+    values.push(filters.type);
+    paramCount++;
+  }
+
+  if (filters?.guideId) {
+    conditions.push(`guide_id = $${paramCount}`);
+    values.push(filters.guideId);
+    paramCount++;
+  }
+
+  if (filters?.search) {
+    conditions.push(`(
+      title ILIKE $${paramCount} OR 
+      guide_name ILIKE $${paramCount} OR 
+      description ILIKE $${paramCount}
+    )`);
+    values.push(`%${filters.search}%`);
+    paramCount++;
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  
+  const query = `
+    SELECT * FROM therapies 
+    ${whereClause}
+    ORDER BY updated_at DESC
+  `;
+
+  console.log('🔍 Executing ALL therapies query:', query.substring(0, 100), '...');
+  console.log('🔍 With values:', values);
+
+  const result = await pool.query(query, values);
+  console.log(`✅ Found ${result.rows.length} therapies for admin`);
+  
+  return result.rows;
+}

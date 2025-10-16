@@ -183,17 +183,17 @@ export default function MasterDashboardV2() {
     
     switch (category) {
       case 'ceremonias':
-        return <Badge className="bg-purple-600 text-white hover:bg-purple-700">{categoryName}</Badge>;
+        return <Badge className="bg-purple-500 hover:bg-purple-600 text-white">{categoryName}</Badge>;
       case 'terapias':
-        return <Badge className="bg-blue-600 text-white hover:bg-blue-700">{categoryName}</Badge>;
+        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white">{categoryName}</Badge>;
       case 'microdosis':
-        return <Badge className="bg-pink-600 text-white hover:bg-pink-700">{categoryName}</Badge>;
+        return <Badge className="bg-pink-500 hover:bg-pink-600 text-white">{categoryName}</Badge>;
       case 'medicina':
-        return <Badge className="bg-green-600 text-white hover:bg-green-700">{categoryName}</Badge>;
+        return <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white">{categoryName}</Badge>;
       case 'eventos':
-        return <Badge className="bg-orange-600 text-white hover:bg-orange-700">{categoryName}</Badge>;
+        return <Badge className="bg-amber-500 hover:bg-amber-600 text-white">{categoryName}</Badge>;
       case 'productos':
-        return <Badge className="bg-cyan-600 text-white hover:bg-cyan-700">{categoryName}</Badge>;
+        return <Badge className="bg-cyan-500 hover:bg-cyan-600 text-white">{categoryName}</Badge>;
       default:
         return <Badge variant="secondary">{categoryName}</Badge>;
     }
@@ -397,39 +397,47 @@ export default function MasterDashboardV2() {
         
         {/* Stats - Compact */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <Card className="p-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <Card className="p-4 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3">
-              <TrendingUp className="w-5 h-5 text-blue-500 flex-shrink-0" />
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
               <div className="min-w-0">
-                <div className="text-xs font-medium text-gray-600 dark:text-gray-400">Total</div>
-                <div className="text-xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
+                <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Total</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</div>
               </div>
             </div>
           </Card>
-          <Card className="p-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <Card className="p-4 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3">
-              <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
               <div className="min-w-0">
-                <div className="text-xs font-medium text-gray-600 dark:text-gray-400">Published</div>
-                <div className="text-xl font-bold text-green-600">{stats.published}</div>
+                <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Published</div>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.published}</div>
               </div>
             </div>
           </Card>
-          <Card className="p-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <Card className="p-4 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-orange-500 flex-shrink-0" />
+              <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                <Clock className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+              </div>
               <div className="min-w-0">
-                <div className="text-xs font-medium text-gray-600 dark:text-gray-400">Pending</div>
-                <div className="text-xl font-bold text-orange-600">{stats.pending}</div>
+                <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Pending</div>
+                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.pending}</div>
               </div>
             </div>
           </Card>
-          <Card className="p-3 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <Card className="p-4 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3">
-              <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+                <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
               <div className="min-w-0">
-                <div className="text-xs font-medium text-gray-600 dark:text-gray-400">Low Stock</div>
-                <div className="text-xl font-bold text-red-600">{stats.lowStock}</div>
+                <div className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Low Stock</div>
+                <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.lowStock}</div>
               </div>
             </div>
           </Card>

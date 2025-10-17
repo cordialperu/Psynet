@@ -366,8 +366,8 @@ export default function HomeAppleV3() {
               </a> 2025 Psynet. All rights reserved.
             </div>
             <div className="flex gap-8 text-xs">
-              <a href="/terms" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Términos de uso</a>
-              <a href="/how-it-works" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">How It Works</a>
+              <a href="/terms" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Terms of Use</a>
+              {/* <a href="/how-it-works" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">How It Works</a> */}
               <a 
                 href="/admin/login"
                 className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"

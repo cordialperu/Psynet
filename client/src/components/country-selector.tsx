@@ -16,8 +16,8 @@ interface Country {
 }
 
 const countries: Country[] = [
-  { code: "PE", name: "Perú", flag: "🇵🇪" },
-  { code: "MX", name: "México", flag: "🇲🇽" },
+  { code: "PE", name: "Peru", flag: "🇵🇪" },
+  { code: "MX", name: "Mexico", flag: "🇲🇽" },
 ];
 
 interface CountrySelectorProps {

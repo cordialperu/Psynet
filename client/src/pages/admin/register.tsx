@@ -5,6 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +21,9 @@ const registerSchema = z.object({
   tiktok: z.string().optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
+  acceptedTerms: z.boolean().refine((val) => val === true, {
+    message: "You must accept the Terms and Conditions",
+  }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -44,12 +48,13 @@ export default function AdminRegister() {
       tiktok: "",
       password: "",
       confirmPassword: "",
+      acceptedTerms: false,
     },
   });
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterForm) => {
-      const { confirmPassword, ...registerData } = data;
+      const { confirmPassword, acceptedTerms, ...registerData } = data;
       return await apiRequest("POST", "/api/auth/register", registerData);
     },
     onSuccess: () => {
@@ -229,6 +234,31 @@ export default function AdminRegister() {
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="acceptedTerms"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-gray-200 dark:border-gray-700 p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-terms"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-sm text-gray-900 dark:text-white transition-colors duration-300">
+                        I accept the{" "}
+                        <Link href="/terms" target="_blank" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
+                          Terms and Conditions
+                        </Link>
+                      </FormLabel>
+                      <FormMessage />
+                    </div>
                   </FormItem>
                 )}
               />

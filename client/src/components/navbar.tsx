@@ -12,7 +12,7 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/explore", label: "Explore" },
-    { href: "/how-it-works", label: "How It Works" },
+    // { href: "/how-it-works", label: "How It Works" }, // Hidden - not ready yet
   ];
 
   return (

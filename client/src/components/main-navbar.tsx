@@ -245,7 +245,7 @@ export function MainNavbar() {
                   >
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-200 text-[10px] font-semibold text-gray-700">PE</span>
-                      <span className="text-sm text-gray-700">Perú</span>
+                      <span className="text-sm text-gray-700">Peru</span>
                     </div>
                     {selectedCountry === "PE" && (
                       <span className="h-2 w-2 rounded-full bg-gray-400" />
@@ -260,7 +260,7 @@ export function MainNavbar() {
                   >
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-gray-200 text-[10px] font-semibold text-gray-700">MX</span>
-                      <span className="text-sm text-gray-700">México</span>
+                      <span className="text-sm text-gray-700">Mexico</span>
                     </div>
                     {selectedCountry === "MX" && (
                       <span className="h-2 w-2 rounded-full bg-gray-400" />
@@ -377,16 +377,16 @@ export function MainNavbar() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setLocation("/guia/dashboard")}>
                       <User className="mr-2 h-4 w-4" />
-                      <span>Mi Panel</span>
+                      <span>My Dashboard</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setLocation("/guia/perfil")}>
                       <User className="mr-2 h-4 w-4" />
-                      <span>Mi Perfil</span>
+                      <span>My Profile</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      <span>Cerrar Sesión</span>
+                      <span>Logout</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

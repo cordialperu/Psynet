@@ -8,6 +8,20 @@ import { MainNavbar } from "@/components/main-navbar";
 import { useSwipe } from "@/hooks/use-swipe";
 import { improveIOSScrolling } from "@/lib/mobile-utils";
 
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+});
+
+function formatAvailableDate(dateString: string): string {
+  if (!dateString) return "";
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) {
+    return dateString;
+  }
+  return dateFormatter.format(parsed);
+}
+
 export default function HomeAppleV3() {
   const { selectedCountry } = useCountry();
   const [selectedType, setSelectedType] = useState<string>('all'); // Inicia en 'all' mostrando todas
@@ -217,6 +231,10 @@ export default function HomeAppleV3() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
               {filteredTherapies.map((therapy, index) => {
                 const videoId = therapy.videoUrl ? getYouTubeVideoId(therapy.videoUrl) : null;
+                const showDates = ["ceremonias", "eventos"].includes((therapy.category || "ceremonias").toLowerCase());
+                const rawDates = (therapy as unknown as { availableDates?: unknown; available_dates?: unknown }).availableDates
+                  ?? (therapy as unknown as { available_dates?: unknown }).available_dates;
+                const availableDates = Array.isArray(rawDates) ? rawDates as string[] : [];
                 return (
                   <a 
                     key={therapy.id}
@@ -283,6 +301,24 @@ export default function HomeAppleV3() {
                             <p className="text-xs md:text-base text-gray-600 dark:text-gray-300 mb-2 md:mb-3 line-clamp-2 leading-relaxed">
                               {therapy.description}
                             </p>
+
+                            {showDates && availableDates.length > 0 && (
+                              <div className="mb-3 flex flex-wrap gap-2">
+                                {availableDates.slice(0, 3).map((date, idx) => (
+                                  <span
+                                    key={`${therapy.id}-date-${idx}`}
+                                    className="inline-flex items-center rounded-full bg-gray-900/10 dark:bg-white/10 text-gray-900 dark:text-white px-3 py-1 text-xs font-medium"
+                                  >
+                                    {formatAvailableDate(date)}
+                                  </span>
+                                ))}
+                                {availableDates.length > 3 && (
+                                  <span className="inline-flex items-center rounded-full border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-3 py-1 text-xs">
+                                    +{availableDates.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
 
                             {/* Meta Info */}
                             <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-500 dark:text-gray-400">

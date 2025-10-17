@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
-import { Link, useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { User, LogOut } from "lucide-react";
 import { AuthDialog } from "./auth-dialog";
 import { useQuery } from "@tanstack/react-query";
 import type { Guide } from "@shared/schema";
+import { getQueryFn } from "@/lib/queryClient";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +28,6 @@ export function MainNavbar() {
   const [selectedType, setSelectedType] = useState<'all' | 'ceremonias' | 'terapias' | 'microdosis' | 'medicina' | 'eventos' | 'productos'>("all");
   const [countryMenuOpen, setCountryMenuOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Leer parámetro de categoría de la URL al cargar
   useEffect(() => {
@@ -161,6 +161,7 @@ export function MainNavbar() {
 
   const { data: guide } = useQuery<Guide>({
     queryKey: ["/api/auth/me"],
+    queryFn: getQueryFn<Guide>({ on401: "returnNull" }),
     retry: false,
     enabled: !!localStorage.getItem("sessionId"),
   });
@@ -171,10 +172,16 @@ export function MainNavbar() {
     window.location.reload();
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name?: string | null) => {
+    if (!name) {
+      return "";
+    }
+
     return name
-      .split(" ")
-      .map((n) => n[0])
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((n) => n[0] ?? "")
       .join("")
       .toUpperCase()
       .slice(0, 2);

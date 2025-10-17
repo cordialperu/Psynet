@@ -62,7 +62,7 @@ export default function TherapyForm() {
   const isEditing = !!params?.id;
 
   const { data: therapy, isLoading } = useQuery<Therapy>({
-    queryKey: ["/api/therapies", params?.id],
+    queryKey: [`/api/therapies/${params?.id}`],
     enabled: isEditing,
   });
 

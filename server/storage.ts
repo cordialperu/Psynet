@@ -276,7 +276,20 @@ export class DbStorage implements IStorage {
   async getAdminSettings(): Promise<AdminSettings | undefined> {
     try {
       const settings = await queryAdminSettings();
-      return settings as any;
+
+      if (!settings) {
+        return undefined;
+      }
+
+      return {
+        id: settings.id,
+        adminName: settings.admin_name,
+        adminWhatsapp: settings.admin_whatsapp,
+        adminWhatsappMexico: settings.admin_whatsapp_mexico,
+        paypalEmail: settings.paypal_email,
+        createdAt: settings.created_at,
+        updatedAt: settings.updated_at,
+      } as AdminSettings;
     } catch (error) {
       console.error('Error fetching admin settings:', error);
       return undefined;
@@ -291,11 +304,27 @@ export class DbStorage implements IStorage {
       if (existing) {
         // Update existing
         const updated = await updateAdminSettingsDirectly(existing.id, data);
-        return updated as any;
+        return {
+          id: updated.id,
+          adminName: updated.admin_name,
+          adminWhatsapp: updated.admin_whatsapp,
+          adminWhatsappMexico: updated.admin_whatsapp_mexico,
+          paypalEmail: updated.paypal_email,
+          createdAt: updated.created_at,
+          updatedAt: updated.updated_at,
+        } as AdminSettings;
       } else {
         // Create new
         const created = await createAdminSettingsDirectly(data);
-        return created as any;
+        return {
+          id: created.id,
+          adminName: created.admin_name,
+          adminWhatsapp: created.admin_whatsapp,
+          adminWhatsappMexico: created.admin_whatsapp_mexico,
+          paypalEmail: created.paypal_email,
+          createdAt: created.created_at,
+          updatedAt: created.updated_at,
+        } as AdminSettings;
       }
     } catch (error) {
       console.error('Error updating admin settings:', error);

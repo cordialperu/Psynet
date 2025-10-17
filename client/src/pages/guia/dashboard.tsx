@@ -7,22 +7,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import type { Guide, Therapy } from "@shared/schema";
 import { MainNavbar } from "@/components/main-navbar";
+import { getQueryFn } from "@/lib/queryClient";
 
 export default function GuiaDashboard() {
   const { data: guide, isLoading: guideLoading } = useQuery<Guide>({
     queryKey: ["/api/auth/me"],
+    queryFn: getQueryFn<Guide>({ on401: "returnNull" }),
   });
 
   const { data: therapies = [], isLoading: therapiesLoading } = useQuery<Therapy[]>({
     queryKey: ["/api/therapies/my-therapies"],
     enabled: !!guide,
   });
-
-  const formatType = (type: string) => {
-    return type.split("-").map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(" ");
-  };
 
   const getStatusBadge = (therapy: Therapy) => {
     if (therapy.approvalStatus === "pending") {

@@ -2,12 +2,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { Plus, Edit, Trash2, LogOut, User, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider } from "@/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import type { Guide, Therapy } from "@shared/schema";
 import { useState } from "react";
 import { GuideProfileForm } from "@/components/admin/guide-profile-form";
@@ -19,6 +19,7 @@ export default function AdminDashboard() {
 
   const { data: guide, isLoading: guideLoading } = useQuery<Guide>({
     queryKey: ["/api/auth/me"],
+    queryFn: getQueryFn<Guide>({ on401: "returnNull" }),
   });
 
   const { data: therapies = [], isLoading: therapiesLoading } = useQuery<Therapy[]>({
@@ -185,8 +186,8 @@ export default function AdminDashboard() {
                             <TableCell className="text-gray-700 dark:text-gray-300">{formatType(therapy.type)}</TableCell>
                             <TableCell className="text-gray-700 dark:text-gray-300">{therapy.location || "—"}</TableCell>
                             <TableCell>
-                              <Badge variant={therapy.isPublished ? "default" : "secondary"} className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
-                                {therapy.isPublished ? "Published" : "Draft"}
+                              <Badge variant={therapy.published ? "default" : "secondary"} className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+                                {therapy.published ? "Published" : "Draft"}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">

@@ -26,6 +26,47 @@ pool.on('error', (err) => {
   console.error('❌ PostgreSQL pool error:', err);
 });
 
+// Helper function to map snake_case to camelCase for therapy objects
+function mapTherapyFromDb(row: any) {
+  return {
+    id: row.id,
+    guideId: row.guide_id,
+    guideName: row.guide_name,
+    guidePhotoUrl: row.guide_photo_url,
+    country: row.country,
+    category: row.category,
+    title: row.title,
+    slug: row.slug,
+    description: row.description,
+    type: row.type,
+    basePrice: row.base_price,
+    platformFee: row.platform_fee,
+    price: row.price,
+    currency: row.currency,
+    duration: row.duration,
+    location: row.location,
+    googleMapsUrl: row.google_maps_url,
+    videoUrl: row.video_url,
+    whatsappNumber: row.whatsapp_number,
+    availableDates: row.available_dates,
+    availableTimes: row.available_times,
+    fixedTime: row.fixed_time,
+    shippingOptions: row.shipping_options,
+    inventory: row.inventory,
+    capacity: row.capacity,
+    bookedSlots: row.booked_slots,
+    specificFields: row.specific_fields,
+    published: row.is_published,
+    approvalStatus: row.approval_status,
+    displayOrder: row.display_order,
+    deletedAt: row.deleted_at,
+    viewsCount: row.views_count,
+    whatsappClicks: row.whatsapp_clicks,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 export async function queryPublishedTherapies(filters?: { country?: string; type?: string; category?: string }) {
   const conditions: string[] = ['is_published = true'];
   const values: any[] = [];
@@ -61,7 +102,7 @@ export async function queryPublishedTherapies(filters?: { country?: string; type
   const result = await pool.query(query, values);
   console.log(`✅ Found ${result.rows.length} therapies`);
   
-  return result.rows;
+  return result.rows.map(mapTherapyFromDb);
 }
 
 export async function queryAllTherapies(filters?: { country?: string; type?: string; guideId?: string; search?: string }) {
@@ -111,7 +152,7 @@ export async function queryAllTherapies(filters?: { country?: string; type?: str
   const result = await pool.query(query, values);
   console.log(`✅ Found ${result.rows.length} therapies for admin`);
   
-  return result.rows;
+  return result.rows.map(mapTherapyFromDb);
 }
 
 export async function queryGuideByEmail(email: string) {
@@ -180,7 +221,7 @@ export async function queryTherapyBySlug(slug: string) {
   
   if (result.rows.length > 0) {
     console.log('✅ Therapy found:', result.rows[0].title);
-    return result.rows[0];
+    return mapTherapyFromDb(result.rows[0]);
   }
   
   console.log('⚠️ No therapy found with that slug');
@@ -204,7 +245,18 @@ export async function updateTherapyDirectly(id: string, updates: Record<string, 
     inventory: 'inventory',
     capacity: 'capacity',
     bookedSlots: 'booked_slots',
-    // Agregar más campos según necesites
+    basePrice: 'base_price',
+    platformFee: 'platform_fee',
+    googleMapsUrl: 'google_maps_url',
+    videoUrl: 'video_url',
+    whatsappNumber: 'whatsapp_number',
+    specificFields: 'specific_fields',
+    availableDates: 'available_dates',
+    availableTimes: 'available_times',
+    fixedTime: 'fixed_time',
+    shippingOptions: 'shipping_options',
+    guideName: 'guide_name',
+    guidePhotoUrl: 'guide_photo_url',
   };
   
   for (const [key, value] of Object.entries(updates)) {
@@ -234,7 +286,7 @@ export async function updateTherapyDirectly(id: string, updates: Record<string, 
   
   if (result.rows.length > 0) {
     console.log('✅ Therapy updated successfully:', result.rows[0].title);
-    return result.rows[0];
+    return mapTherapyFromDb(result.rows[0]);
   }
   
   throw new Error('Therapy not found or update failed');
@@ -264,7 +316,7 @@ export async function queryTherapyById(id: string) {
   const result = await pool.query(query, [id]);
   if (result.rows.length > 0) {
     console.log('✅ Therapy found:', result.rows[0].title);
-    return result.rows[0];
+    return mapTherapyFromDb(result.rows[0]);
   }
   console.log('⚠️ No therapy found with that id');
   return null;
@@ -275,17 +327,18 @@ export async function queryTherapiesByGuideId(guideId: string) {
   console.log('🔍 Looking for therapies by guide:', guideId);
   const result = await pool.query(query, [guideId]);
   console.log(`✅ Found ${result.rows.length} therapies for guide`);
-  return result.rows;
+  return result.rows.map(mapTherapyFromDb);
 }
 
 export async function createTherapyDirectly(therapyData: any) {
   const query = `
     INSERT INTO therapies (
       guide_id, guide_name, guide_photo_url, country, category, title, slug,
-      description, type, duration, price, currency, location, language,
+      description, type, duration, price, currency, location,
       is_published, approval_status, video_url, created_at, updated_at
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW()
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+      $14, $15, $16, NOW(), NOW()
     ) RETURNING *
   `;
   
@@ -305,7 +358,6 @@ export async function createTherapyDirectly(therapyData: any) {
     therapyData.price || null,
     therapyData.currency || 'USD',
     therapyData.location || null,
-    therapyData.language || 'es',
     therapyData.published || false,
     therapyData.approvalStatus || 'pending',
     therapyData.videoUrl || null
@@ -313,7 +365,7 @@ export async function createTherapyDirectly(therapyData: any) {
   
   if (result.rows.length > 0) {
     console.log('✅ Therapy created successfully:', result.rows[0].title);
-    return result.rows[0];
+    return mapTherapyFromDb(result.rows[0]);
   }
   
   throw new Error('Failed to create therapy');
@@ -403,7 +455,7 @@ export async function queryFeaturedTherapies(limit: number = 6) {
   console.log('🔍 Fetching featured therapies, limit:', limit);
   const result = await pool.query(query, [limit]);
   console.log(`✅ Found ${result.rows.length} featured therapies`);
-  return result.rows;
+  return result.rows.map(mapTherapyFromDb);
 }
 
 // ==================== ADMIN SETTINGS ====================

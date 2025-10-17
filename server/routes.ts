@@ -312,6 +312,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Legacy support: allow older clients to hit /api/therapies and receive published listings
+  app.get("/api/therapies", async (req: Request, res: Response) => {
+    const { type, location, search, country } = req.query;
+
+    try {
+      const therapies = await storage.getPublishedTherapies({
+        type: type as string,
+        location: location as string,
+        search: search as string,
+        country: country as string,
+      });
+
+      res.json(therapies);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to fetch therapies";
+      console.error("Error fetching therapies (legacy route):", message);
+
+      // Return empty array to avoid breaking legacy clients; errors are logged above.
+      res.status(200).json([]);
+    }
+  });
+
   app.get("/api/therapies/slug/:slug", async (req: Request, res: Response) => {
     try {
       const therapy = await storage.getTherapyBySlug(req.params.slug);
@@ -338,15 +360,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const session = (req as any).session;
       const therapy = await storage.getTherapy(req.params.id);
-      
+
       if (!therapy) {
         return res.status(404).json({ message: "Therapy not found" });
       }
 
-      if (therapy.guideId !== session.guideId) {
+      const isMaster = session.isMaster === true;
+      const isOwner = therapy.guideId === session.guideId;
+
+      console.log('🔐 Access check for therapy edit:', {
+        therapyId: therapy.id,
+        therapyTitle: therapy.title,
+        therapyGuideId: therapy.guideId,
+        sessionGuideId: session.guideId,
+        isMaster,
+        isOwner,
+        accessGranted: isOwner || isMaster
+      });
+
+      if (!isOwner && !isMaster) {
+        console.log('❌ Access denied - not owner and not master');
         return res.status(403).json({ message: "Access denied" });
       }
 
+      console.log('✅ Access granted');
       res.json(therapy);
     } catch (error) {
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch therapy" });
@@ -439,11 +476,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Therapy not found" });
       }
 
-      if (therapy.guideId !== session.guideId) {
+      const isMaster = session.isMaster === true;
+      const isOwner = therapy.guideId === session.guideId;
+
+      if (!isOwner && !isMaster) {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const updateData = { ...req.body };
+      const updateData: Record<string, any> = { ...req.body };
+
+      // Normalise publication flag from the form
+      if (Object.prototype.hasOwnProperty.call(updateData, "isPublished")) {
+        updateData.published = updateData.isPublished;
+        delete updateData.isPublished;
+      }
 
       // Log video URL for debugging
       if (updateData.videoUrl) {
@@ -455,59 +501,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.slug = generateSlug(updateData.title);
       }
 
-      // Set to pending review and unpublish when guide makes changes
-      updateData.approvalStatus = "pending";
-      updateData.published = false;
+      if (!isMaster) {
+        // Guides trigger a review cycle on edits
+        updateData.approvalStatus = "pending";
+        updateData.published = false;
+      }
 
-      // Update guide info if available
-      const guide = await storage.getGuide(session.guideId);
-      if (guide) {
-        updateData.guideName = guide.fullName;
-        updateData.guidePhotoUrl = guide.profilePhotoUrl;
+      // Update guide info based on who performs the action
+      const guideToSync = isMaster
+        ? await storage.getGuide(therapy.guideId)
+        : await storage.getGuide(session.guideId);
+
+      if (guideToSync) {
+        updateData.guideName = guideToSync.fullName;
+        updateData.guidePhotoUrl = guideToSync.profilePhotoUrl;
       }
 
       const updatedTherapy = await storage.updateTherapy(req.params.id, updateData);
-      
-      console.log(`✏️ Terapia actualizada por ${guide?.fullName}: ${updatedTherapy.title}`);
-      console.log(`📋 ID: ${updatedTherapy.id} - Estado: pending (requiere revisión)`);
-      
-      // Enviar notificación por WhatsApp a ambos administradores (Perú y México) en paralelo
-      try {
-        const adminSettings = await storage.getAdminSettings();
-        if (adminSettings && (adminSettings.adminWhatsapp || adminSettings.adminWhatsappMexico) && guide) {
-          const adminUrl = process.env.APP_URL || "http://localhost:5001";
-          const message = createUpdateListingNotification({
-            category: updatedTherapy.category || "ceremonias",
-            title: updatedTherapy.title,
-            price: updatedTherapy.price || "0",
-            currency: updatedTherapy.currency || "USD",
-            guideName: guide.fullName,
-            guidePhone: guide.whatsapp,
-            therapyId: updatedTherapy.id,
-            adminUrl,
-          });
-          
-          // Enviar a administrador de Perú
-          if (adminSettings.adminWhatsapp) {
-            const whatsappLinkPeru = generateWhatsAppLink(adminSettings.adminWhatsapp, message);
-            console.log(`📱 WhatsApp notification link generated for Peru admin: ${adminSettings.adminName}`);
-            console.log(`🔗 Perú: ${whatsappLinkPeru}`);
-          }
-          
-          // Enviar a administrador de México
-          if (adminSettings.adminWhatsappMexico) {
-            const whatsappLinkMexico = generateWhatsAppLink(adminSettings.adminWhatsappMexico, message);
-            console.log(`📱 WhatsApp notification link generated for Mexico admin`);
-            console.log(`🔗 México: ${whatsappLinkMexico}`);
-          }
-        } else {
-          console.log("⚠️ Admin WhatsApp not configured, skipping notification");
-        }
-      } catch (notifError) {
-        console.error("❌ Error sending WhatsApp notification:", notifError);
-        // Don't fail the request if notification fails
+
+      if (!isMaster && guideToSync) {
+        console.log(`✏️ Terapia actualizada por ${guideToSync.fullName}: ${updatedTherapy.title}`);
+        console.log(`📋 ID: ${updatedTherapy.id} - Estado: pending (requiere revisión)`);
       }
-      
+
+      // Enviar notificación por WhatsApp solo cuando un guía actualiza su propia terapia
+      if (!isMaster && guideToSync) {
+        try {
+          const adminSettings = await storage.getAdminSettings();
+          if (adminSettings && (adminSettings.adminWhatsapp || adminSettings.adminWhatsappMexico)) {
+            const adminUrl = process.env.APP_URL || "http://localhost:5001";
+            const message = createUpdateListingNotification({
+              category: updatedTherapy.category || "ceremonias",
+              title: updatedTherapy.title,
+              price: updatedTherapy.price || "0",
+              currency: updatedTherapy.currency || "USD",
+              guideName: guideToSync.fullName,
+              guidePhone: guideToSync.whatsapp,
+              therapyId: updatedTherapy.id,
+              adminUrl,
+            });
+
+            if (adminSettings.adminWhatsapp) {
+              const whatsappLinkPeru = generateWhatsAppLink(adminSettings.adminWhatsapp, message);
+              console.log(`📱 WhatsApp notification link generated for Peru admin: ${adminSettings.adminName}`);
+              console.log(`🔗 Perú: ${whatsappLinkPeru}`);
+            }
+
+            if (adminSettings.adminWhatsappMexico) {
+              const whatsappLinkMexico = generateWhatsAppLink(adminSettings.adminWhatsappMexico, message);
+              console.log(`📱 WhatsApp notification link generated for Mexico admin`);
+              console.log(`🔗 México: ${whatsappLinkMexico}`);
+            }
+          } else {
+            console.log("⚠️ Admin WhatsApp not configured, skipping notification");
+          }
+        } catch (notifError) {
+          console.error("❌ Error sending WhatsApp notification:", notifError);
+          // Don't fail the request if notification fails
+        }
+      }
+
       res.json(updatedTherapy);
     } catch (error) {
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update therapy" });
@@ -523,7 +576,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Therapy not found" });
       }
 
-      if (therapy.guideId !== session.guideId) {
+      const isMaster = session.isMaster === true;
+      const isOwner = therapy.guideId === session.guideId;
+
+      if (!isOwner && !isMaster) {
         return res.status(403).json({ message: "Access denied" });
       }
 

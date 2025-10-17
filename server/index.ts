@@ -7,6 +7,19 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Disable etag headers so API responses always send bodies (avoids 304 status)
+app.disable("etag");
+
+// Ensure API responses are never cached by the browser
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith("/api")) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+  }
+  next();
+});
+
 // Add timeout to all requests
 app.use((req, res, next) => {
   req.setTimeout(15000); // 15 second timeout

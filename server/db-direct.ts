@@ -28,6 +28,8 @@ pool.on('error', (err) => {
 
 // Helper function to map snake_case to camelCase for therapy objects
 function mapTherapyFromDb(row: any) {
+  if (!row) return null;
+  
   return {
     id: row.id,
     guideId: row.guide_id,

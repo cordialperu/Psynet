@@ -386,7 +386,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('✅ Access granted');
       res.json(therapy);
     } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch therapy" });
+      console.error('❌ Error fetching therapy:', error);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Failed to fetch therapy",
+        error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : String(error)) : undefined
+      });
     }
   });
 

@@ -37,6 +37,7 @@ pool.on("error", (err) => {
   console.error("\u274C PostgreSQL pool error:", err);
 });
 function mapTherapyFromDb(row) {
+  if (!row) return null;
   return {
     id: row.id,
     guideId: row.guide_id,
@@ -1263,7 +1264,11 @@ async function registerRoutes(app2) {
       console.log("\u2705 Access granted");
       res.json(therapy);
     } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch therapy" });
+      console.error("\u274C Error fetching therapy:", error);
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to fetch therapy",
+        error: process.env.NODE_ENV === "development" ? error instanceof Error ? error.stack : String(error) : void 0
+      });
     }
   });
   app2.post("/api/therapies", requireAuth, async (req, res) => {

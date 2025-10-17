@@ -508,7 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update guide info based on who performs the action
-      const guideToSync = isMaster
+      const guideToSync = isMaster && therapy.guideId
         ? await storage.getGuide(therapy.guideId)
         : await storage.getGuide(session.guideId);
 

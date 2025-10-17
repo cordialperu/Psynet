@@ -36,6 +36,45 @@ pool.on("connect", () => {
 pool.on("error", (err) => {
   console.error("\u274C PostgreSQL pool error:", err);
 });
+function mapTherapyFromDb(row) {
+  return {
+    id: row.id,
+    guideId: row.guide_id,
+    guideName: row.guide_name,
+    guidePhotoUrl: row.guide_photo_url,
+    country: row.country,
+    category: row.category,
+    title: row.title,
+    slug: row.slug,
+    description: row.description,
+    type: row.type,
+    basePrice: row.base_price,
+    platformFee: row.platform_fee,
+    price: row.price,
+    currency: row.currency,
+    duration: row.duration,
+    location: row.location,
+    googleMapsUrl: row.google_maps_url,
+    videoUrl: row.video_url,
+    whatsappNumber: row.whatsapp_number,
+    availableDates: row.available_dates,
+    availableTimes: row.available_times,
+    fixedTime: row.fixed_time,
+    shippingOptions: row.shipping_options,
+    inventory: row.inventory,
+    capacity: row.capacity,
+    bookedSlots: row.booked_slots,
+    specificFields: row.specific_fields,
+    published: row.is_published,
+    approvalStatus: row.approval_status,
+    displayOrder: row.display_order,
+    deletedAt: row.deleted_at,
+    viewsCount: row.views_count,
+    whatsappClicks: row.whatsapp_clicks,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
 async function queryPublishedTherapies(filters) {
   const conditions = ["is_published = true"];
   const values = [];
@@ -64,7 +103,7 @@ async function queryPublishedTherapies(filters) {
   console.log("\u{1F50D} With values:", values);
   const result = await pool.query(query, values);
   console.log(`\u2705 Found ${result.rows.length} therapies`);
-  return result.rows;
+  return result.rows.map(mapTherapyFromDb);
 }
 async function queryAllTherapies(filters) {
   const conditions = [];
@@ -104,7 +143,7 @@ async function queryAllTherapies(filters) {
   console.log("\u{1F50D} With values:", values);
   const result = await pool.query(query, values);
   console.log(`\u2705 Found ${result.rows.length} therapies for admin`);
-  return result.rows;
+  return result.rows.map(mapTherapyFromDb);
 }
 async function queryGuideByEmail(email) {
   const query = "SELECT * FROM guides WHERE email = $1 LIMIT 1";
@@ -152,7 +191,7 @@ async function queryTherapyBySlug(slug) {
   const result = await pool.query(query, [slug]);
   if (result.rows.length > 0) {
     console.log("\u2705 Therapy found:", result.rows[0].title);
-    return result.rows[0];
+    return mapTherapyFromDb(result.rows[0]);
   }
   console.log("\u26A0\uFE0F No therapy found with that slug");
   return null;
@@ -202,7 +241,7 @@ async function updateTherapyDirectly(id, updates) {
   const result = await pool.query(query, values);
   if (result.rows.length > 0) {
     console.log("\u2705 Therapy updated successfully:", result.rows[0].title);
-    return result.rows[0];
+    return mapTherapyFromDb(result.rows[0]);
   }
   throw new Error("Therapy not found or update failed");
 }
@@ -223,7 +262,7 @@ async function queryTherapyById(id) {
   const result = await pool.query(query, [id]);
   if (result.rows.length > 0) {
     console.log("\u2705 Therapy found:", result.rows[0].title);
-    return result.rows[0];
+    return mapTherapyFromDb(result.rows[0]);
   }
   console.log("\u26A0\uFE0F No therapy found with that id");
   return null;
@@ -233,16 +272,17 @@ async function queryTherapiesByGuideId(guideId) {
   console.log("\u{1F50D} Looking for therapies by guide:", guideId);
   const result = await pool.query(query, [guideId]);
   console.log(`\u2705 Found ${result.rows.length} therapies for guide`);
-  return result.rows;
+  return result.rows.map(mapTherapyFromDb);
 }
 async function createTherapyDirectly(therapyData) {
   const query = `
     INSERT INTO therapies (
       guide_id, guide_name, guide_photo_url, country, category, title, slug,
-      description, type, duration, price, currency, location, language,
+      description, type, duration, price, currency, location,
       is_published, approval_status, video_url, created_at, updated_at
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW()
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+      $14, $15, $16, NOW(), NOW()
     ) RETURNING *
   `;
   console.log("\u{1F4DD} Creating therapy:", therapyData.title);
@@ -260,14 +300,13 @@ async function createTherapyDirectly(therapyData) {
     therapyData.price || null,
     therapyData.currency || "USD",
     therapyData.location || null,
-    therapyData.language || "es",
     therapyData.published || false,
     therapyData.approvalStatus || "pending",
     therapyData.videoUrl || null
   ]);
   if (result.rows.length > 0) {
     console.log("\u2705 Therapy created successfully:", result.rows[0].title);
-    return result.rows[0];
+    return mapTherapyFromDb(result.rows[0]);
   }
   throw new Error("Failed to create therapy");
 }
@@ -341,7 +380,7 @@ async function queryFeaturedTherapies(limit = 6) {
   console.log("\u{1F50D} Fetching featured therapies, limit:", limit);
   const result = await pool.query(query, [limit]);
   console.log(`\u2705 Found ${result.rows.length} featured therapies`);
-  return result.rows;
+  return result.rows.map(mapTherapyFromDb);
 }
 async function updateAdminSettingsDirectly(id, data) {
   const query = `
@@ -1163,6 +1202,22 @@ async function registerRoutes(app2) {
       res.status(500).json({ message, error: process.env.NODE_ENV === "development" ? String(error) : void 0 });
     }
   });
+  app2.get("/api/therapies", async (req, res) => {
+    const { type, location, search, country } = req.query;
+    try {
+      const therapies = await storage.getPublishedTherapies({
+        type,
+        location,
+        search,
+        country
+      });
+      res.json(therapies);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to fetch therapies";
+      console.error("Error fetching therapies (legacy route):", message);
+      res.status(200).json([]);
+    }
+  });
   app2.get("/api/therapies/slug/:slug", async (req, res) => {
     try {
       const therapy = await storage.getTherapyBySlug(req.params.slug);
@@ -1190,9 +1245,22 @@ async function registerRoutes(app2) {
       if (!therapy) {
         return res.status(404).json({ message: "Therapy not found" });
       }
-      if (therapy.guideId !== session.guideId) {
+      const isMaster = session.isMaster === true;
+      const isOwner = therapy.guideId === session.guideId;
+      console.log("\u{1F510} Access check for therapy edit:", {
+        therapyId: therapy.id,
+        therapyTitle: therapy.title,
+        therapyGuideId: therapy.guideId,
+        sessionGuideId: session.guideId,
+        isMaster,
+        isOwner,
+        accessGranted: isOwner || isMaster
+      });
+      if (!isOwner && !isMaster) {
+        console.log("\u274C Access denied - not owner and not master");
         return res.status(403).json({ message: "Access denied" });
       }
+      console.log("\u2705 Access granted");
       res.json(therapy);
     } catch (error) {
       res.status(500).json({ message: error instanceof Error ? error.message : "Failed to fetch therapy" });
@@ -1266,55 +1334,67 @@ async function registerRoutes(app2) {
       if (!therapy) {
         return res.status(404).json({ message: "Therapy not found" });
       }
-      if (therapy.guideId !== session.guideId) {
+      const isMaster = session.isMaster === true;
+      const isOwner = therapy.guideId === session.guideId;
+      if (!isOwner && !isMaster) {
         return res.status(403).json({ message: "Access denied" });
       }
       const updateData = { ...req.body };
+      if (Object.prototype.hasOwnProperty.call(updateData, "isPublished")) {
+        updateData.published = updateData.isPublished;
+        delete updateData.isPublished;
+      }
       if (updateData.videoUrl) {
         console.log(`\u{1F3A5} Video URL updated: ${updateData.videoUrl}`);
       }
       if (updateData.title && updateData.title !== therapy.title) {
         updateData.slug = generateSlug(updateData.title);
       }
-      updateData.approvalStatus = "pending";
-      updateData.published = false;
-      const guide = await storage.getGuide(session.guideId);
-      if (guide) {
-        updateData.guideName = guide.fullName;
-        updateData.guidePhotoUrl = guide.profilePhotoUrl;
+      if (!isMaster) {
+        updateData.approvalStatus = "pending";
+        updateData.published = false;
+      }
+      const guideToSync = isMaster && therapy.guideId ? await storage.getGuide(therapy.guideId) : await storage.getGuide(session.guideId);
+      if (guideToSync) {
+        updateData.guideName = guideToSync.fullName;
+        updateData.guidePhotoUrl = guideToSync.profilePhotoUrl;
       }
       const updatedTherapy = await storage.updateTherapy(req.params.id, updateData);
-      console.log(`\u270F\uFE0F Terapia actualizada por ${guide?.fullName}: ${updatedTherapy.title}`);
-      console.log(`\u{1F4CB} ID: ${updatedTherapy.id} - Estado: pending (requiere revisi\xF3n)`);
-      try {
-        const adminSettings = await storage.getAdminSettings();
-        if (adminSettings && (adminSettings.adminWhatsapp || adminSettings.adminWhatsappMexico) && guide) {
-          const adminUrl = process.env.APP_URL || "http://localhost:5001";
-          const message = createUpdateListingNotification({
-            category: updatedTherapy.category || "ceremonias",
-            title: updatedTherapy.title,
-            price: updatedTherapy.price || "0",
-            currency: updatedTherapy.currency || "USD",
-            guideName: guide.fullName,
-            guidePhone: guide.whatsapp,
-            therapyId: updatedTherapy.id,
-            adminUrl
-          });
-          if (adminSettings.adminWhatsapp) {
-            const whatsappLinkPeru = generateWhatsAppLink(adminSettings.adminWhatsapp, message);
-            console.log(`\u{1F4F1} WhatsApp notification link generated for Peru admin: ${adminSettings.adminName}`);
-            console.log(`\u{1F517} Per\xFA: ${whatsappLinkPeru}`);
+      if (!isMaster && guideToSync) {
+        console.log(`\u270F\uFE0F Terapia actualizada por ${guideToSync.fullName}: ${updatedTherapy.title}`);
+        console.log(`\u{1F4CB} ID: ${updatedTherapy.id} - Estado: pending (requiere revisi\xF3n)`);
+      }
+      if (!isMaster && guideToSync) {
+        try {
+          const adminSettings = await storage.getAdminSettings();
+          if (adminSettings && (adminSettings.adminWhatsapp || adminSettings.adminWhatsappMexico)) {
+            const adminUrl = process.env.APP_URL || "http://localhost:5001";
+            const message = createUpdateListingNotification({
+              category: updatedTherapy.category || "ceremonias",
+              title: updatedTherapy.title,
+              price: updatedTherapy.price || "0",
+              currency: updatedTherapy.currency || "USD",
+              guideName: guideToSync.fullName,
+              guidePhone: guideToSync.whatsapp,
+              therapyId: updatedTherapy.id,
+              adminUrl
+            });
+            if (adminSettings.adminWhatsapp) {
+              const whatsappLinkPeru = generateWhatsAppLink(adminSettings.adminWhatsapp, message);
+              console.log(`\u{1F4F1} WhatsApp notification link generated for Peru admin: ${adminSettings.adminName}`);
+              console.log(`\u{1F517} Per\xFA: ${whatsappLinkPeru}`);
+            }
+            if (adminSettings.adminWhatsappMexico) {
+              const whatsappLinkMexico = generateWhatsAppLink(adminSettings.adminWhatsappMexico, message);
+              console.log(`\u{1F4F1} WhatsApp notification link generated for Mexico admin`);
+              console.log(`\u{1F517} M\xE9xico: ${whatsappLinkMexico}`);
+            }
+          } else {
+            console.log("\u26A0\uFE0F Admin WhatsApp not configured, skipping notification");
           }
-          if (adminSettings.adminWhatsappMexico) {
-            const whatsappLinkMexico = generateWhatsAppLink(adminSettings.adminWhatsappMexico, message);
-            console.log(`\u{1F4F1} WhatsApp notification link generated for Mexico admin`);
-            console.log(`\u{1F517} M\xE9xico: ${whatsappLinkMexico}`);
-          }
-        } else {
-          console.log("\u26A0\uFE0F Admin WhatsApp not configured, skipping notification");
+        } catch (notifError) {
+          console.error("\u274C Error sending WhatsApp notification:", notifError);
         }
-      } catch (notifError) {
-        console.error("\u274C Error sending WhatsApp notification:", notifError);
       }
       res.json(updatedTherapy);
     } catch (error) {
@@ -1328,7 +1408,9 @@ async function registerRoutes(app2) {
       if (!therapy) {
         return res.status(404).json({ message: "Therapy not found" });
       }
-      if (therapy.guideId !== session.guideId) {
+      const isMaster = session.isMaster === true;
+      const isOwner = therapy.guideId === session.guideId;
+      if (!isOwner && !isMaster) {
         return res.status(403).json({ message: "Access denied" });
       }
       await storage.deleteTherapy(req.params.id);

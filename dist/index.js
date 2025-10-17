@@ -205,6 +205,7 @@ async function updateTherapyDirectly(id, updates) {
   let paramIndex = 1;
   const fieldMap = {
     published: "is_published",
+    isPublished: "is_published",
     approvalStatus: "approval_status",
     displayOrder: "display_order",
     inventory: "inventory",
@@ -221,7 +222,8 @@ async function updateTherapyDirectly(id, updates) {
     fixedTime: "fixed_time",
     shippingOptions: "shipping_options",
     guideName: "guide_name",
-    guidePhotoUrl: "guide_photo_url"
+    guidePhotoUrl: "guide_photo_url",
+    guideId: "guide_id"
   };
   for (const [key, value] of Object.entries(updates)) {
     const dbField = fieldMap[key] || key;
@@ -239,12 +241,19 @@ async function updateTherapyDirectly(id, updates) {
   `;
   console.log("\u{1F50D} Update query:", query);
   console.log("\u{1F50D} Values:", values);
-  const result = await pool.query(query, values);
-  if (result.rows.length > 0) {
-    console.log("\u2705 Therapy updated successfully:", result.rows[0].title);
-    return mapTherapyFromDb(result.rows[0]);
+  try {
+    const result = await pool.query(query, values);
+    if (result.rows.length > 0) {
+      console.log("\u2705 Therapy updated successfully:", result.rows[0].title);
+      return mapTherapyFromDb(result.rows[0]);
+    }
+    throw new Error("Therapy not found or update failed");
+  } catch (error) {
+    console.error("\u274C Error updating therapy:", error);
+    console.error("Query:", query);
+    console.error("Values:", values);
+    throw error;
   }
-  throw new Error("Therapy not found or update failed");
 }
 async function queryAdminSettings() {
   const query = "SELECT * FROM admin_settings LIMIT 1";
@@ -1403,7 +1412,13 @@ async function registerRoutes(app2) {
       }
       res.json(updatedTherapy);
     } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update therapy" });
+      console.error("\u274C Error updating therapy:", error);
+      console.error("Request body:", req.body);
+      console.error("Therapy ID:", req.params.id);
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to update therapy",
+        error: process.env.NODE_ENV === "development" ? error instanceof Error ? error.stack : String(error) : void 0
+      });
     }
   });
   app2.delete("/api/therapies/:id", requireAuth, async (req, res) => {

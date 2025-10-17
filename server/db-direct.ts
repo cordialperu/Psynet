@@ -242,6 +242,7 @@ export async function updateTherapyDirectly(id: string, updates: Record<string, 
   // Mapeo de campos camelCase a snake_case
   const fieldMap: Record<string, string> = {
     published: 'is_published',
+    isPublished: 'is_published',
     approvalStatus: 'approval_status',
     displayOrder: 'display_order',
     inventory: 'inventory',
@@ -259,6 +260,7 @@ export async function updateTherapyDirectly(id: string, updates: Record<string, 
     shippingOptions: 'shipping_options',
     guideName: 'guide_name',
     guidePhotoUrl: 'guide_photo_url',
+    guideId: 'guide_id',
   };
   
   for (const [key, value] of Object.entries(updates)) {
@@ -284,14 +286,21 @@ export async function updateTherapyDirectly(id: string, updates: Record<string, 
   console.log('🔍 Update query:', query);
   console.log('🔍 Values:', values);
   
-  const result = await pool.query(query, values);
-  
-  if (result.rows.length > 0) {
-    console.log('✅ Therapy updated successfully:', result.rows[0].title);
-    return mapTherapyFromDb(result.rows[0]);
+  try {
+    const result = await pool.query(query, values);
+    
+    if (result.rows.length > 0) {
+      console.log('✅ Therapy updated successfully:', result.rows[0].title);
+      return mapTherapyFromDb(result.rows[0]);
+    }
+    
+    throw new Error('Therapy not found or update failed');
+  } catch (error) {
+    console.error('❌ Error updating therapy:', error);
+    console.error('Query:', query);
+    console.error('Values:', values);
+    throw error;
   }
-  
-  throw new Error('Therapy not found or update failed');
 }
 
 export async function queryAdminSettings() {

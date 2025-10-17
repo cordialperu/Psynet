@@ -567,7 +567,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(updatedTherapy);
     } catch (error) {
-      res.status(500).json({ message: error instanceof Error ? error.message : "Failed to update therapy" });
+      console.error('❌ Error updating therapy:', error);
+      console.error('Request body:', req.body);
+      console.error('Therapy ID:', req.params.id);
+      res.status(500).json({ 
+        message: error instanceof Error ? error.message : "Failed to update therapy",
+        error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : String(error)) : undefined
+      });
     }
   });
 
